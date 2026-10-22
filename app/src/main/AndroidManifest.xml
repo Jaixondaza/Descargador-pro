@@ -1,233 +1,183 @@
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.os.Bundle
-import android.view.View
-import android.view.inputmethod.InputMethodManager
-import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
-import com.bumptech.glide.Glide
-import com.yausername.youtubedl_android.YoutubeDL
-import com.yausername.youtubedl_android.YoutubeDLRequest
-import com.yausername.youtubedl_android.mapper.VideoInfo
-import com.yausername.youtubedl_android.mapper.VideoFormat
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#121212"
+    android:fillViewport="true">
 
-class MainActivity : AppCompatActivity() {
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
 
-    // 1. Declaración de variables de la interfaz
-    private lateinit var editUrl: EditText
-    private lateinit var btnPegar: Button
-    private lateinit var btnAnalizar: Button
-    private lateinit var btnDescargar: Button
-    private lateinit var spinnerCalidad: Spinner
-    
-    private lateinit var layoutPreview: View 
-    private lateinit var imgMiniatura: ImageView
-    private lateinit var txtTitulo: TextView
-    private lateinit var btnCopiarTitulo: ImageButton
-    private lateinit var txtEstado: TextView
-    private lateinit var progressBar: ProgressBar
-    
-    // Variables para guardar los datos del video analizado
-    private var videoUrl: String = ""
-    private var videoInfo: VideoInfo? = null
-    private var formatosDisponibles: List<VideoFormat> = emptyList()
+        <!-- Título de la App -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Descargador Pro"
+            android:textColor="#FFFFFF"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="YouTube · TikTok · Facebook · Instagram"
+            android:textColor="#A0A0A0"
+            android:textSize="14sp"
+            android:layout_marginBottom="24dp"/>
 
-        inicializarVistas()
-        configurarListeners()
-    }
+        <!-- Campo para pegar el enlace -->
+        <EditText
+            android:id="@+id/editUrl"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="#1E1E1E"
+            android:hint="Pega aquí el enlace del video..."
+            android:textColor="#FFFFFF"
+            android:textColorHint="#757575"
+            android:padding="16dp"
+            android:inputType="textUri"
+            android:layout_marginBottom="16dp"/>
 
-    private fun inicializarVistas() {
-        // Enlazar los IDs del XML
-        editUrl = findViewById(R.id.editUrl)
-        btnPegar = findViewById(R.id.btnPegar)
-        btnAnalizar = findViewById(R.id.btnAnalizar)
-        btnDescargar = findViewById(R.id.btnDescargar)
-        spinnerCalidad = findViewById(R.id.spinnerCalidad)
-        
-        layoutPreview = findViewById(R.id.layoutPreview)
-        imgMiniatura = findViewById(R.id.imgMiniatura)
-        txtTitulo = findViewById(R.id.txtTitulo)
-        btnCopiarTitulo = findViewById(R.id.btnCopiarTitulo)
-        txtEstado = findViewById(R.id.txtEstado)
-        progressBar = findViewById(R.id.progressBar)
-        
-        // Ocultar elementos hasta que se analice un video
-        layoutPreview.visibility = View.GONE
-        progressBar.visibility = View.GONE
-    }
+        <!-- Botones Pegar y Analizar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="24dp">
 
-    private fun configurarListeners() {
-        // Botón Pegar
-        btnPegar.setOnClickListener {
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            if (clipboard.hasPrimaryClip()) {
-                val item = clipboard.primaryClip?.getItemAt(0)
-                editUrl.setText(item?.text.toString())
-            }
-        }
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPegar"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:text="Pegar"
+                android:textColor="#FFFFFF"
+                app:backgroundTint="#333333"
+                app:cornerRadius="12dp"
+                android:layout_marginEnd="8dp"/>
 
-        // Botón Analizar
-        btnAnalizar.setOnClickListener {
-            analizarVideo()
-        }
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAnalizar"
+                android:layout_width="0dp"
+                android:layout_height="56dp"
+                android:layout_weight="1"
+                android:text="Analizar"
+                android:textColor="#FFFFFF"
+                app:backgroundTint="#6200EE"
+                app:cornerRadius="12dp"
+                android:layout_marginStart="8dp"/>
+        </LinearLayout>
 
-        // Botón Copiar Título
-        btnCopiarTitulo.setOnClickListener {
-            videoInfo?.let { info ->
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("Título del Video", info.title)
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(this, "Título copiado", Toast.LENGTH_SHORT).show()
-            }
-        }
+        <!-- VISTA PREVIA DEL VIDEO (Oculta hasta que se analice) -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/layoutPreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="#1E1E1E"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="8dp"
+            android:layout_marginBottom="24dp"
+            android:visibility="gone">
 
-        // Botón Descargar
-        btnDescargar.setOnClickListener {
-            descargarVideo()
-        }
-    }
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-    // Función para ocultar el teclado
-    private fun ocultarTeclado() {
-        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.hideSoftInputFromWindow(editUrl.windowToken, 0)
-    }
+                <!-- Miniatura del video -->
+                <ImageView
+                    android:id="@+id/imgMiniatura"
+                    android:layout_width="match_parent"
+                    android:layout_height="180dp"
+                    android:scaleType="centerCrop"
+                    android:background="#333333"/>
 
-    private fun analizarVideo() {
-        ocultarTeclado() // Oculta el teclado automáticamente
+                <!-- Título y botón de copiar -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="12dp">
 
-        val url = editUrl.text.toString().trim()
-        if (url.isEmpty()) {
-            Toast.makeText(this, "Por favor, pega un enlace válido", Toast.LENGTH_SHORT).show()
-            return
-        }
+                    <TextView
+                        android:id="@+id/txtTitulo"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp"
+                        android:maxLines="2"
+                        android:ellipsize="end"
+                        android:text="Título del video..."/>
 
-        videoUrl = url
-        txtEstado.text = "Analizando enlace..."
-        txtEstado.setTextColor(android.graphics.Color.WHITE)
-        progressBar.visibility = View.VISIBLE
-        layoutPreview.visibility = View.GONE
-        btnDescargar.isEnabled = false
+                    <ImageButton
+                        android:id="@+id/btnCopiarTitulo"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@android:drawable/ic_menu_edit"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        app:tint="#FFFFFF"
+                        android:contentDescription="Copiar título"/>
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val info = YoutubeDL.getInstance().getInfo(url)
-                videoInfo = info
+        <!-- Selector de Calidad -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Calidad de descarga"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
 
-                withContext(Dispatchers.Main) {
-                    progressBar.visibility = View.GONE
-                    layoutPreview.visibility = View.VISIBLE
-                    btnDescargar.isEnabled = true
-                    txtEstado.text = "Video listo para descargar"
-                    txtEstado.setTextColor(android.graphics.Color.parseColor("#00E676"))
+        <Spinner
+            android:id="@+id/spinnerCalidad"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:backgroundTint="#1E1E1E"
+            android:layout_marginBottom="24dp"/>
 
-                    // Configurar Vista Previa
-                    txtTitulo.text = info.title
-                    Glide.with(this@MainActivity)
-                        .load(info.thumbnail)
-                        .placeholder(android.R.drawable.ic_menu_gallery)
-                        .into(imgMiniatura)
+        <!-- Botón Descargar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnDescargar"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:text="⬇ DESCARGAR"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="#6200EE"
+            app:cornerRadius="16dp"
+            android:layout_marginBottom="16dp"/>
 
-                    // Configurar Selector de Calidad
-                    configurarCalidades(info)
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    progressBar.visibility = View.GONE
-                    txtEstado.text = "Error al analizar: ${e.message}"
-                    txtEstado.setTextColor(android.graphics.Color.RED)
-                }
-            }
-        }
-    }
+        <!-- Barra de progreso (Oculta por defecto) -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:progressTint="#00E676"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone"/>
 
-    private fun configurarCalidades(info: VideoInfo) {
-        // Filtramos los formatos que contienen video (evitando los que son solo audio)
-        val formatos = info.formats ?: emptyList()
-        formatosDisponibles = formatos.filter { it.vcodec != "none" && it.vcodec != null }
-        
-        val opcionesCalidad = formatosDisponibles.map { 
-            if (it.formatNote.isNullOrEmpty()) "${it.formatId} - ${it.ext}" else "${it.formatNote} - ${it.ext}" 
-        }
+        <!-- Texto de estado (Porcentaje, MB, errores, etc.) -->
+        <TextView
+            android:id="@+id/txtEstado"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#00E676"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:text="Esperando enlace..."/>
 
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, opcionesCalidad)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinnerCalidad.adapter = adapter
-    }
-
-    private fun descargarVideo() {
-        if (videoUrl.isEmpty() || videoInfo == null || formatosDisponibles.isEmpty()) return
-
-        val posicionSeleccionada = spinnerCalidad.selectedItemPosition
-        val formatoSeleccionado = formatosDisponibles[posicionSeleccionada]
-
-        txtEstado.text = "Iniciando descarga..."
-        txtEstado.setTextColor(android.graphics.Color.WHITE)
-        progressBar.visibility = View.VISIBLE
-        progressBar.progress = 0
-        btnDescargar.isEnabled = false
-        btnAnalizar.isEnabled = false
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val request = YoutubeDLRequest(videoUrl)
-                
-                // Usamos el ID del formato seleccionado
-                request.addOption("-f", formatoSeleccionado.formatId)
-                
-                // Carpeta de descargas
-                val dir = getExternalFilesDir(null)?.absolutePath ?: filesDir.absolutePath
-                request.addOption("-o", "$dir/%(title)s.%(ext)s")
-
-                YoutubeDL.getInstance().execute(request) { progress, _, _ ->
-                    runOnUiThread {
-                        if (progress > 0) {
-                            val porcentaje = progress.toInt().coerceIn(0, 100)
-                            
-                            // Cálculo de MB
-                            // Algunas plataformas devuelven el tamaño en 'filesize' o 'filesizeApprox'
-                            val tamanoTotalBytes = if (formatoSeleccionado.filesize > 0) formatoSeleccionado.filesize else (formatoSeleccionado.filesizeApprox ?: 0L)
-                            val tamanoTotalMB = tamanoTotalBytes / (1024.0 * 1024.0)
-                            
-                            val mbDescargados = (progress / 100.0) * tamanoTotalMB
-
-                            if (tamanoTotalMB > 0) {
-                                txtEstado.text = "Descargando: $porcentaje% (${"%.2f".format(mbDescargados)} MB / ${"%.2f".format(tamanoTotalMB)} MB)"
-                            } else {
-                                txtEstado.text = "Descargando: $porcentaje%"
-                            }
-                            progressBar.progress = porcentaje
-                        }
-                    }
-                }
-
-                withContext(Dispatchers.Main) {
-                    progressBar.visibility = View.GONE
-                    txtEstado.text = "¡Descarga completada con éxito!"
-                    txtEstado.setTextColor(android.graphics.Color.parseColor("#00E676"))
-                    btnDescargar.isEnabled = true
-                    btnAnalizar.isEnabled = true
-                    Toast.makeText(this@MainActivity, "Video guardado en la memoria del teléfono", Toast.LENGTH_LONG).show()
-                }
-
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    progressBar.visibility = View.GONE
-                    txtEstado.text = "Error al descargar: ${e.message}"
-                    txtEstado.setTextColor(android.graphics.Color.RED)
-                    btnDescargar.isEnabled = true
-                    btnAnalizar.isEnabled = true
-                }
-            }
-        }
-    }
-}
+    </LinearLayout>
+</ScrollView>
