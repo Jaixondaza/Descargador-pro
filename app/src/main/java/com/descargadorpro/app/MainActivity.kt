@@ -1,273 +1,228 @@
-package com.descargadorpro.app
-
+import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
-import android.graphics.Color
-import android.net.Uri
 import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
+import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
+import com.bumptech.glide.Glide
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
+import com.yausername.youtubedl_android.mapper.VideoInfo
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-/**
- * Pantalla principal: pegar / analizar / descargar.
- * Las descargas se guardan directo en la galería (Movies/DescargadorPro).
- * Uso previsto: videos propios o con permiso/licencia del usuario.
- */
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var inputUrl: EditText
-    private lateinit var txtInfo: TextView
-    private lateinit var txtEstado: TextView
-    private lateinit var progreso: ProgressBar
+    // Variables de la interfaz (Asegúrate de que estos IDs existan en tu activity_main.xml)
+    private lateinit var editUrl: EditText
+    private lateinit var btnPegar: Button
+    private lateinit var btnAnalizar: Button
+    private lateinit var btnDescargar: Button
     private lateinit var spinnerCalidad: Spinner
-    private lateinit var checkDerechos: CheckBox
-
-    @Volatile private var motorListo = false
-    @Volatile private var ffmpegListo = false
-    private var ultimoUri: Uri? = null
-    private var ultimoTipo: String = "video/mp4"
-
-    private data class Calidad(val etiqueta: String, val altura: Int?, val audio: Boolean = false)
-
-    private val calidades = listOf(
-        Calidad("Mejor calidad disponible", null),
-        Calidad("4K  — 2160p (si existe)", 2160),
-        Calidad("2K  — 1440p (si existe)", 1440),
-        Calidad("Full HD — 1080p", 1080),
-        Calidad("HD — 720p", 720),
-        Calidad("480p (ahorra datos)", 480),
-        Calidad("Solo audio — MP3", null, audio = true)
-    )
+    
+    private lateinit var layoutPreview: View // Contenedor de la vista previa
+    private lateinit var imgMiniatura: ImageView
+    private lateinit var txtTitulo: TextView
+    private lateinit var btnCopiarTitulo: ImageButton
+    private lateinit var txtEstado: TextView
+    private lateinit var progressBar: ProgressBar
+    
+    private var videoUrl: String = ""
+    private var videoInfo: VideoInfo? = null
+    private var selectedFormatId: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        supportActionBar?.hide()
-        window.statusBarColor = Color.parseColor("#13111C")
-        window.navigationBarColor = Color.parseColor("#13111C")
 
-        inputUrl = findViewById(R.id.inputUrl)
-        txtInfo = findViewById(R.id.txtInfo)
-        txtEstado = findViewById(R.id.txtEstado)
-        progreso = findViewById(R.id.progreso)
+        inicializarVistas()
+        configurarListeners()
+    }
+
+    private fun inicializarVistas() {
+        editUrl = findViewById(R.id.editUrl)
+        btnPegar = findViewById(R.id.btnPegar)
+        btnAnalizar = findViewById(R.id.btnAnalizar)
+        btnDescargar = findViewById(R.id.btnDescargar)
         spinnerCalidad = findViewById(R.id.spinnerCalidad)
-        checkDerechos = findViewById(R.id.checkDerechos)
-
-        spinnerCalidad.adapter = ArrayAdapter(
-            this, R.layout.item_spinner,
-            calidades.map { it.etiqueta }
-        )
-
-        intent?.let { recibirEnlaceCompartido(it) }
-
-        findViewById<Button>(R.id.btnPegar).setOnClickListener {
-            val clip = getSystemService(ClipboardManager::class.java)
-                .primaryClip?.getItemAt(0)?.text?.toString().orEmpty()
-            val url = extraerUrl(clip)
-            if (url != null) inputUrl.setText(url)
-            else toast("El portapapeles no tiene un enlace")
-        }
-
-        findViewById<Button>(R.id.btnAnalizar).setOnClickListener { analizar() }
-        findViewById<Button>(R.id.btnDescargar).setOnClickListener { descargar() }
-
-        findViewById<Button>(R.id.btnEditor).setOnClickListener {
-            startActivity(Intent(this, EditorActivity::class.java))
-        }
-
-        // "Mis videos": abre el último descargado o, si no hay, la galería de videos
-        findViewById<Button>(R.id.btnMisVideos).setOnClickListener {
-            val uri = ultimoUri
-            val intento = if (uri != null) {
-                Intent(Intent.ACTION_VIEW).setDataAndType(uri, ultimoTipo)
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            } else {
-                Intent(Intent.ACTION_VIEW, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
-            }
-            try { startActivity(intento) } catch (e: Exception) { toast("No se encontró una app de galería") }
-        }
-
-        iniciarMotor()
+        
+        layoutPreview = findViewById(R.id.layoutPreview)
+        imgMiniatura = findViewById(R.id.imgMiniatura)
+        txtTitulo = findViewById(R.id.txtTitulo)
+        btnCopiarTitulo = findViewById(R.id.btnCopiarTitulo)
+        txtEstado = findViewById(R.id.txtEstado)
+        progressBar = findViewById(R.id.progressBar)
+        
+        // Ocultar elementos hasta que se analice un video
+        layoutPreview.visibility = View.GONE
+        progressBar.visibility = View.GONE
     }
 
-    private fun iniciarMotor() {
-        estado("Preparando el motor de descarga…")
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                YoutubeDL.getInstance().init(applicationContext)
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) { estado("No se pudo iniciar el motor: ${e.message}") }
-                return@launch
-            }
-
-            // FFmpeg de yt-dlp: hace falta para unir video+audio y para sacar MP3.
-            // Se inicia por reflexión para que compile aunque el paquete cambie de nombre.
-            try {
-                val clase = Class.forName("com.yausername.ffmpeg.FFmpeg")
-                val instancia = clase.getMethod("getInstance").invoke(null)
-                clase.getMethod("init", Context::class.java).invoke(instancia, applicationContext)
-                ffmpegListo = true
-            } catch (e: Throwable) {
-                ffmpegListo = false
-            }
-
-            // Limpia restos de descargas anteriores
-            try {
-                val base = getExternalFilesDir(Environment.DIRECTORY_MOVIES) ?: filesDir
-                base.listFiles()?.filter { it.isDirectory && it.name.startsWith("tmp_") }
-                    ?.forEach { it.deleteRecursively() }
-            } catch (_: Exception) { }
-
-            withContext(Dispatchers.Main) { estado("Actualizando el motor de descarga…") }
-            try {
-                YoutubeDL.getInstance().updateYoutubeDL(applicationContext, YoutubeDL.UpdateChannel.NIGHTLY)
-                withContext(Dispatchers.Main) {
-                    estado("Motor actualizado. Pega un enlace y toca Analizar.")
-                }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    estado("No se pudo actualizar el motor (¿sin internet?): ${e.message}")
-                }
-            }
-            motorListo = true
-        }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        recibirEnlaceCompartido(intent)
-    }
-
-    private fun recibirEnlaceCompartido(intent: Intent) {
-        val texto = when (intent.action) {
-            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)
-            Intent.ACTION_VIEW -> intent.dataString
-            else -> null
-        }
-        extraerUrl(texto.orEmpty())?.let { inputUrl.setText(it) }
-    }
-
-    private fun analizar() {
-        val url = urlValida() ?: return
-        if (!motorListo) { toast("El motor se está preparando, espera unos segundos"); return }
-        estado("Analizando…")
-        lifecycleScope.launch {
-            try {
-                val info = withContext(Dispatchers.IO) {
-                    val req = YoutubeDLRequest(url)
-                    req.addOption("--no-playlist")
-                    YoutubeDL.getInstance().getInfo(req)
-                }
-                txtInfo.text = buildString {
-                    append("Título: ${info.title ?: "—"}\n")
-                    append("Duración: ${info.duration.toInt()} s")
-                }
-                estado("Análisis listo. Elige calidad y descarga.")
-            } catch (e: Exception) {
-                estado("No se pudo analizar: ${(e.message ?: "sin detalle").takeLast(400)}")
+    private fun configurarListeners() {
+        // 1. Botón Pegar
+        btnPegar.setOnClickListener {
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            if (clipboard.hasPrimaryClip()) {
+                val item = clipboard.primaryClip?.getItemAt(0)
+                editUrl.setText(item?.text.toString())
             }
         }
-    }
 
-    private fun formatoPara(c: Calidad): String {
-        if (c.audio) return "ba/b"
-        val h = c.altura
-        val f = if (h != null) "[height<=$h]" else ""
-        return if (ffmpegListo) {
-            // Hasta 1080p prefiere H.264 (se ve en cualquier galería)
-            if (h != null && h <= 1080) "bv*$f[vcodec^=avc1]+ba[ext=m4a]/bv*$f+ba/b$f/b"
-            else "bv*$f+ba/b$f/b"
-        } else {
-            // Sin FFmpeg no se puede unir video y audio: pide un archivo ya unido
-            "b$f[ext=mp4]/b$f/b"
+        // 2. Botón Analizar
+        btnAnalizar.setOnClickListener {
+            analizarVideo()
+        }
+
+        // 3. Botón Copiar Título
+        btnCopiarTitulo.setOnClickListener {
+            videoInfo?.let { info ->
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("Título del Video", info.title)
+                clipboard.setPrimaryClip(clip)
+                Toast.makeText(this, "Título copiado al portapapeles", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // 4. Botón Descargar
+        btnDescargar.setOnClickListener {
+            descargarVideo()
         }
     }
 
-    private fun descargar() {
-        val url = urlValida() ?: return
-        if (!checkDerechos.isChecked) {
-            toast("Marca la casilla: es tu video o tienes permiso para descargarlo")
-            return
-        }
-        if (!motorListo) { toast("El motor se está preparando, espera unos segundos"); return }
-        if (!Galeria.permisoOk(this)) {
-            toast("Acepta el permiso de almacenamiento y toca Descargar otra vez")
+    private fun ocultarTeclado() {
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(editUrl.windowToken, 0)
+    }
+
+    private fun analizarVideo() {
+        ocultarTeclado() // <- SOLUCIÓN: Oculta el teclado al analizar
+
+        val url = editUrl.text.toString().trim()
+        if (url.isEmpty()) {
+            Toast.makeText(this, "Por favor, pega un enlace válido", Toast.LENGTH_SHORT).show()
             return
         }
 
-        val calidad = calidades[spinnerCalidad.selectedItemPosition]
-        val base = getExternalFilesDir(Environment.DIRECTORY_MOVIES) ?: filesDir
-        val tmp = File(base, "tmp_${System.currentTimeMillis()}").apply { mkdirs() }
+        // NOTA: Se eliminó por completo la validación del CheckBox de derechos.
 
-        estado("Descargando: ${calidad.etiqueta} …")
-        progreso.progress = 0
+        videoUrl = url
+        txtEstado.text = "Analizando enlace..."
+        progressBar.visibility = View.VISIBLE
+        layoutPreview.visibility = View.GONE
 
-        lifecycleScope.launch {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                val guardado = withContext(Dispatchers.IO) {
-                    val req = YoutubeDLRequest(url)
-                    req.addOption("-f", formatoPara(calidad))
-                    req.addOption("-o", File(tmp, "%(title).60s [%(id)s].%(ext)s").absolutePath)
-                    req.addOption("--no-playlist")
-                    req.addOption("--no-mtime")
-                    if (calidad.audio) {
-                        if (ffmpegListo) {
-                            req.addOption("--extract-audio")
-                            req.addOption("--audio-format", "mp3")
-                        }
-                    } else if (ffmpegListo) {
-                        req.addOption("--merge-output-format", "mp4")
-                    }
+                // Obtener información del video usando youtubedl-android
+                val info = YoutubeDL.getInstance().getInfo(url)
+                videoInfo = info
 
-                    YoutubeDL.getInstance().execute(req, "descarga") { progress, _, _ ->
-                        runOnUiThread {
-                            val p = progress.toInt().coerceIn(0, 100)
-                            progreso.progress = p
-                            estado("Descargando… $p %")
-                        }
-                    }
+                withContext(Dispatchers.Main) {
+                    progressBar.visibility = View.GONE
+                    layoutPreview.visibility = View.VISIBLE
+                    txtEstado.text = "Video listo para descargar"
 
-                    val validas = setOf("mp4", "mkv", "webm", "mov", "mp3", "m4a", "opus", "ogg")
-                    val archivo = tmp.listFiles()
-                        ?.filter { it.isFile && it.extension.lowercase() in validas }
-                        ?.maxByOrNull { it.length() }
-                        ?: throw IllegalStateException("yt-dlp terminó pero no dejó ningún archivo")
+                    // Configurar Vista Previa
+                    txtTitulo.text = info.title
+                    // Usamos Glide para cargar la miniatura (Asegúrate de tener la dependencia)
+                    Glide.with(this@MainActivity)
+                        .load(info.thumbnail)
+                        .placeholder(android.R.drawable.ic_menu_gallery)
+                        .into(imgMiniatura)
 
-                    runOnUiThread { estado("Guardando en la galería…") }
-                    val uri = Galeria.guardar(applicationContext, archivo)
-                    Pair(uri, Galeria.mime(archivo))
+                    // Configurar Selector de Calidad
+                    configurarCalidades(info)
                 }
-                ultimoUri = guardado.first
-                ultimoTipo = guardado.second
-                progreso.progress = 100
-                estado("✅ Listo. El video ya está en tu galería (carpeta DescargadorPro). Toca «Mis videos» para abrirlo.")
             } catch (e: Exception) {
-                estado("Error de descarga:\n${(e.message ?: "sin detalle").takeLast(500)}")
-            } finally {
-                withContext(Dispatchers.IO) { tmp.deleteRecursively() }
+                withContext(Dispatchers.Main) {
+                    progressBar.visibility = View.GONE
+                    txtEstado.text = "Error al analizar: ${e.message}"
+                }
             }
         }
     }
 
-    private fun urlValida(): String? {
-        val url = extraerUrl(inputUrl.text.toString())
-        if (url == null) toast("Pega primero un enlace válido (http…)")
-        return url
+    private fun configurarCalidades(info: VideoInfo) {
+        // Extraemos las calidades disponibles
+        val formatos = info.formats ?: emptyList()
+        
+        // Filtramos solo los que tienen video y son MP4 (o los que tú prefieras)
+        val opcionesCalidad = formatos.filter { it.vcodec != "none" }
+            .map { "${it.formatNote} - ${it.ext}" }
+            .distinct()
+
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, opcionesCalidad)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerCalidad.adapter = adapter
+
+        // Guardamos el ID del formato seleccionado (por defecto el primero)
+        if (formatos.isNotEmpty()) {
+            selectedFormatId = formatos.first().formatId
+        }
     }
 
-    private fun extraerUrl(texto: String): String? =
-        Regex("""https?://\S+""").find(texto)?.value?.trimEnd('.', ',', ')')
+    private fun descargarVideo() {
+        if (videoUrl.isEmpty() || videoInfo == null) return
 
-    private fun estado(msg: String) { txtEstado.text = msg }
-    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+        val formatSeleccionado = spinnerCalidad.selectedItemPosition
+        val formato = videoInfo!!.formats.filter { it.vcodec != "none" }[formatSeleccionado]
+        selectedFormatId = formato.formatId
+
+        txtEstado.text = "Iniciando descarga..."
+        progressBar.visibility = View.VISIBLE
+        btnDescargar.isEnabled = false
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val request = YoutubeDLRequest(videoUrl)
+                request.addOption("-f", selectedFormatId)
+                
+                // Carpeta de descargas de la app
+                val dir = getExternalFilesDir(null)?.absolutePath ?: filesDir.absolutePath
+                request.addOption("-o", "$dir/%(title)s.%(ext)s")
+
+                // Ejecutar descarga con callback de progreso
+                YoutubeDL.getInstance().execute(request) { progress, etaInSeconds, line ->
+                    // Este callback se ejecuta en un hilo secundario
+                    runOnUiThread {
+                        if (progress > 0) {
+                            val porcentaje = progress.toInt()
+                            
+                            // CÁLCULO DE MB
+                            // Intentamos obtener el tamaño total del formato
+                            val tamanoTotalBytes = formato.filesize.takeIf { it > 0 } ?: (formato.filesizeApprox ?: 0L)
+                            val tamanoTotalMB = tamanoTotalBytes / (1024.0 * 1024.0)
+                            
+                            val mbDescargados = (progress / 100.0) * tamanoTotalMB
+
+                            if (tamanoTotalMB > 0) {
+                                txtEstado.text = "Descargando: $porcentaje% ($mbDescargados MB de $tamanoTotalMB MB)"
+                            } else {
+                                txtEstado.text = "Descargando: $porcentaje%"
+                            }
+                            progressBar.progress = porcentaje
+                        }
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    progressBar.visibility = View.GONE
+                    txtEstado.text = "¡Descarga completada con éxito!"
+                    btnDescargar.isEnabled = true
+                    Toast.makeText(this@MainActivity, "Video guardado en la carpeta de la app", Toast.LENGTH_LONG).show()
+                }
+
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    progressBar.visibility = View.GONE
+                    txtEstado.text = "Error al descargar: ${e.message}"
+                    btnDescargar.isEnabled = true
+                }
+            }
+        }
+    }
 }
