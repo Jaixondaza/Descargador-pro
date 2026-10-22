@@ -1,11 +1,13 @@
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.bumptech.glide.Glide
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
@@ -18,11 +20,12 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
-    // 1. Declaración de variables de la interfaz
+    // Variables de la interfaz
     private lateinit var editUrl: EditText
     private lateinit var btnPegar: Button
     private lateinit var btnAnalizar: Button
     private lateinit var btnDescargar: Button
+    private lateinit var btnIrEditor: Button
     private lateinit var spinnerCalidad: Spinner
     
     private lateinit var layoutPreview: View 
@@ -41,6 +44,16 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // 1. INICIALIZACIÓN DE LIBRERÍAS (YoutubeDL y FFmpeg)
+        Thread {
+            try {
+                YoutubeDL.getInstance().init(application)
+                FFmpegKitConfig.init()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }.start()
+
         inicializarVistas()
         configurarListeners()
     }
@@ -51,6 +64,7 @@ class MainActivity : AppCompatActivity() {
         btnPegar = findViewById(R.id.btnPegar)
         btnAnalizar = findViewById(R.id.btnAnalizar)
         btnDescargar = findViewById(R.id.btnDescargar)
+        btnIrEditor = findViewById(R.id.btnIrEditor) // Botón al editor
         spinnerCalidad = findViewById(R.id.spinnerCalidad)
         
         layoutPreview = findViewById(R.id.layoutPreview)
@@ -93,6 +107,12 @@ class MainActivity : AppCompatActivity() {
         // Botón Descargar
         btnDescargar.setOnClickListener {
             descargarVideo()
+        }
+
+        // Botón Ir al Editor
+        btnIrEditor.setOnClickListener {
+            val intent = Intent(this, EditorActivity::class.java)
+            startActivity(intent)
         }
     }
 
@@ -151,7 +171,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun configurarCalidades(info: VideoInfo) {
-        // Filtramos los formatos que contienen video (evitando los que son solo audio)
+        // Filtramos los formatos que contienen video
         val formatos = info.formats ?: emptyList()
         formatosDisponibles = formatos.filter { it.vcodec != "none" && it.vcodec != null }
         
@@ -184,7 +204,7 @@ class MainActivity : AppCompatActivity() {
                 // Usamos el ID del formato seleccionado
                 request.addOption("-f", formatoSeleccionado.formatId)
                 
-                // Carpeta de descargas
+                // Carpeta de descargas (carpeta privada de la app)
                 val dir = getExternalFilesDir(null)?.absolutePath ?: filesDir.absolutePath
                 request.addOption("-o", "$dir/%(title)s.%(ext)s")
 
@@ -194,7 +214,6 @@ class MainActivity : AppCompatActivity() {
                             val porcentaje = progress.toInt().coerceIn(0, 100)
                             
                             // Cálculo de MB
-                            // Algunas plataformas devuelven el tamaño en 'filesize' o 'filesizeApprox'
                             val tamanoTotalBytes = if (formatoSeleccionado.filesize > 0) formatoSeleccionado.filesize else (formatoSeleccionado.filesizeApprox ?: 0L)
                             val tamanoTotalMB = tamanoTotalBytes / (1024.0 * 1024.0)
                             
@@ -216,7 +235,7 @@ class MainActivity : AppCompatActivity() {
                     txtEstado.setTextColor(android.graphics.Color.parseColor("#00E676"))
                     btnDescargar.isEnabled = true
                     btnAnalizar.isEnabled = true
-                    Toast.makeText(this@MainActivity, "Video guardado en la memoria del teléfono", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@MainActivity, "Video descargado correctamente", Toast.LENGTH_LONG).show()
                 }
 
             } catch (e: Exception) {
