@@ -55,11 +55,11 @@ class MainActivity : AppCompatActivity() {
         // INICIALIZACIÓN CORREGIDA (Sin getInstance)
         CoroutineScope(Dispatchers.IO).launch {
             try {
-    YoutubeDL.getInstance().init(applicationContext) 
-    FFmpegKitConfig.init()
-} catch (e: Exception) {
-    e.printStackTrace()
-}
+                YoutubeDL.init(applicationContext) // <--- SIN getInstance()
+                FFmpegKitConfig.init()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
 
         inicializarVistas()
@@ -149,7 +149,6 @@ class MainActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // CORRECCIÓN: También sin getInstance() aquí
                 val info = YoutubeDL.getInfo(url)
                 videoInfo = info
 
@@ -214,7 +213,6 @@ class MainActivity : AppCompatActivity() {
                 val dir = getExternalFilesDir(null)?.absolutePath ?: filesDir.absolutePath
                 request.addOption("-o", "$dir/%(title)s.%(ext)s")
 
-                // CORRECCIÓN: También sin getInstance() aquí
                 YoutubeDL.execute(request) { progress, _, _ ->
                     runOnUiThread {
                         if (progress > 0) {
