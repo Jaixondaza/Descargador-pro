@@ -157,9 +157,10 @@ object Galeria {
         )
 
         video.setOnPreparedListener { video.start() }
-        video.setOnErrorListener { _, _, _ ->
+        video.setOnErrorListener { _, what, extra ->
+            Log.w("Galeria", "Error de reproducción: $what / $extra")
             Toast.makeText(
-                act, "No se pudo reproducir el archivo. Búscalo en tu galería, carpeta DescargadorPro.",
+                act, "No se pudo reproducir (error $what/$extra). Está en tu galería, carpeta DescargadorPro.",
                 Toast.LENGTH_LONG
             ).show()
             dialogo.dismiss()
