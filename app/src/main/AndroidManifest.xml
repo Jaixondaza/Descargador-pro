@@ -15,7 +15,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Descargadorpro"
         android:usesCleartextTraffic="true"
-        android:requestLegacyExternalStorage="true">
+        android:requestLegacyExternalStorage="true"
+        android:extractNativeLibs="true">
 
         <!-- Pantalla Principal -->
         <activity
