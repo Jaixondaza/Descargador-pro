@@ -20,15 +20,14 @@ jobs:
         with:
           gradle-version: 8.7
           
-      # Solo limpiamos la caché, sin usar 'gradle clean'
       - name: Limpiar caché de Gradle
         run: |
           rm -rf ~/.gradle/caches/
           rm -rf ~/.gradle/wrapper/
         
-      # Compilar APK
+      # COMPILAR EL MÓDULO APP EXPLÍCITAMENTE
       - name: Compilar APK
-        run: gradle assembleDebug --no-daemon
+        run: gradle :app:assembleDebug --no-daemon
         
       - uses: actions/upload-artifact@v4
         with:
