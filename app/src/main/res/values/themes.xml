@@ -1,9 +1,18 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.DescargadorPro" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
-        <item name="colorPrimary">#7C4DFF</item>
-        <item name="colorPrimaryVariant">#3700B3</item>
-        <item name="colorOnPrimary">#FFFFFF</item>
-        <item name="colorSecondary">#00E5A0</item>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Tema principal de la app -->
+    <style name="Theme.Descargadorpro" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Colores primarios -->
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorOnPrimary">@color/white</item>
+        
+        <!-- Color de la barra de estado superior (donde sale la hora) -->
+        <item name="android:statusBarColor">@color/fondo_oscuro</item>
+        
+        <!-- Forzar iconos blancos en la barra de estado -->
+        <item name="android:windowLightStatusBar">false</item>
+        
+        <!-- Color de fondo general -->
+        <item name="android:windowBackground">@color/fondo_oscuro</item>
     </style>
 </resources>
