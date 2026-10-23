@@ -52,9 +52,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Inicialización de librerías en segundo plano
         Thread {
             try {
-                YoutubeDL.getInstance().init(application)
+                YoutubeDL.init(application) // Sintaxis corregida
                 FFmpegKitConfig.init()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -148,7 +149,8 @@ class MainActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val info = YoutubeDL.getInstance().getInfo(url)
+                // Sintaxis corregida (sin .getInstance())
+                val info = YoutubeDL.getInfo(url)
                 videoInfo = info
 
                 withContext(Dispatchers.Main) {
@@ -208,13 +210,14 @@ class MainActivity : AppCompatActivity() {
             try {
                 val request = YoutubeDLRequest(videoUrl)
                 
-                // CORRECCIÓN DEL TYPE MISMATCH AQUÍ (Agregado ?: "")
+                // Protección contra nulos en el ID del formato
                 request.addOption("-f", formatoSeleccionado.formatId ?: "")
                 
                 val dir = getExternalFilesDir(null)?.absolutePath ?: filesDir.absolutePath
                 request.addOption("-o", "$dir/%(title)s.%(ext)s")
 
-                YoutubeDL.getInstance().execute(request) { progress, _, _ ->
+                // Sintaxis corregida (sin .getInstance())
+                YoutubeDL.execute(request) { progress, _, _ ->
                     runOnUiThread {
                         if (progress > 0) {
                             val porcentaje = progress.toInt().coerceIn(0, 100)
@@ -282,6 +285,7 @@ class MainActivity : AppCompatActivity() {
                 values.clear()
                 values.put(MediaStore.Video.Media.IS_PENDING, 0)
                 resolver.update(uri, values, null, null)
+                
                 archivoOriginal.delete()
                 true
             } else {
