@@ -356,6 +356,7 @@ class EditorActivity : AppCompatActivity() {
         resultadoEsAudio = p.tipo == Tipo.AUDIO
         ocupado(true)
         txtEstado.text = "Preparando…"
+        motivoFallo = ""
         irAlFinal()
 
         lifecycleScope.launch {
@@ -368,6 +369,15 @@ class EditorActivity : AppCompatActivity() {
         }
     }
 
+    private var motivoFallo = ""
+
+    /** Comprueba que el archivo generado sea reproducible: duración razonable y, en video, un cuadro legible. */
+    private fun resultadoValido(f: File): Boolean = try {
+        val d = leerDatos(f)
+        val duracionOk = duracionMs <= 0 || d.duracionMs >= duracionMs * 7 / 10
+        duracionOk && (resultadoEsAudio || (d.ancho > 0 && d.cuadro != null))
+    } catch (e: Exception) { false }
+
     private fun correr(intentos: List<List<String>>, i: Int, salida: File) {
         runOnUiThread {
             progreso.progress = 0
@@ -376,7 +386,14 @@ class EditorActivity : AppCompatActivity() {
             else "Probando otro método (${i + 1} de ${intentos.size})…"
         }
         FFmpegKit.executeWithArgumentsAsync(intentos[i].toTypedArray(), { session ->
-            val ok = ReturnCode.isSuccess(session.returnCode) && salida.exists() && salida.length() > 0
+            val ejecutoOk = ReturnCode.isSuccess(session.returnCode) && salida.exists() && salida.length() > 0
+            val ok = ejecutoOk && resultadoValido(salida)
+            if (ejecutoOk && !ok) {
+                val a = intentos[i]
+                val k = a.indexOf("-c:v")
+                val cod = if (k >= 0) a.getOrNull(k + 1) ?: "?" else "?"
+                motivoFallo = "Un método generó un archivo dañado (${fmtBytes(salida.length())}, codificador: $cod) y se descartó."
+            }
             if (ok) {
                 terminar(salida)
             } else {
@@ -389,7 +406,8 @@ class EditorActivity : AppCompatActivity() {
                     val log = session.allLogsAsString.orEmpty().takeLast(300)
                     runOnUiThread {
                         ocupado(false)
-                        txtEstado.text = "No se pudo procesar este video con ese ajuste. Prueba con otro ajuste.\n\nDetalle técnico:\n$log"
+                        txtEstado.text = "No se pudo procesar este video con ese ajuste. Prueba con otro ajuste.\n\n" +
+                            (if (motivoFallo.isNotEmpty()) motivoFallo + "\n\n" else "") + "Detalle técnico:\n$log"
                     }
                 }
             }
@@ -419,77 +437,4 @@ class EditorActivity : AppCompatActivity() {
             runOnUiThread {
                 ocupado(false)
                 txtEstado.text = "Se procesó, pero no se pudo guardar en la galería: ${e.message}"
-            }
-        }
-    }
-
-    private fun ocupado(si: Boolean) {
-        procesando = si
-        cardProgreso.visibility = View.VISIBLE
-        btnProcesar.isEnabled = !si && videoOriginal != null
-        btnElegir.isEnabled = !si
-        btnCancelar.visibility = if (si) View.VISIBLE else View.GONE
-        filaResultado.visibility = View.GONE
-        if (si) {
-            progreso.progress = 0
-            txtPorcentaje.text = "0%"
-        }
-    }
-
-    private fun verResultado() {
-        val uri = uriResultado ?: return
-        Galeria.abrir(this, uri, if (resultadoEsAudio) "audio/mp4" else "video/mp4")
-    }
-
-    /** Baja la pantalla hasta el progreso / resultado para que no haya que buscarlo. */
-    private fun irAlFinal() {
-        val sv = findViewById<ScrollView>(R.id.scrollEditor)
-        sv.post { sv.fullScroll(View.FOCUS_DOWN) }
-    }
-
-    private fun compartir() {
-        val uri = uriResultado ?: return
-        if (uri.scheme != "content") { toast("Compártelo desde tu galería, carpeta DescargadorPro"); return }
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = if (resultadoEsAudio) "audio/mp4" else "video/mp4"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        startActivity(Intent.createChooser(intent, "Compartir"))
-    }
-
-    // ------------------------------------------------------------ utilidades
-
-    private fun nombreDesdeUri(uri: Uri): String? {
-        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-            val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-            if (idx >= 0 && cursor.moveToFirst()) return cursor.getString(idx)
-        }
-        return uri.lastPathSegment
-    }
-
-    private fun fondo(color: String, borde: String, radioDp: Int, grosorDp: Int) = GradientDrawable().apply {
-        shape = GradientDrawable.RECTANGLE
-        cornerRadius = dp(radioDp).toFloat()
-        setColor(Color.parseColor(color))
-        setStroke(dp(grosorDp), Color.parseColor(borde))
-    }
-
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
-
-    private fun fmtBytes(b: Long): String = when {
-        b >= 1_000_000_000L -> String.format(Locale.getDefault(), "%.2f GB", b / 1e9)
-        b >= 1_000_000L -> String.format(Locale.getDefault(), "%.1f MB", b / 1e6)
-        else -> String.format(Locale.getDefault(), "%.0f KB", b / 1e3)
-    }
-
-    private fun fmtDuracion(seg: Int): String {
-        val h = seg / 3600
-        val m = (seg % 3600) / 60
-        val s = seg % 60
-        return if (h > 0) String.format(Locale.US, "%d:%02d:%02d", h, m, s)
-        else String.format(Locale.US, "%d:%02d", m, s)
-    }
-
-    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
-}
+                
