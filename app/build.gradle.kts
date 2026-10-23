@@ -4,18 +4,20 @@ plugins {
 }
 
 android {
-    namespace = "com.descargadorpro.app"
-    compileSdk = 34
+    namespace = "com.tu.paquete" // Reemplaza con tu package real
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.descargadorpro.app"
-        minSdk = 24
-        targetSdk = 34
+        applicationId = "com.tu.paquete"
+        minSdk = 21
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-        // youtubedl-android trae binarios nativos grandes; arm64 cubre casi
-        // todos los celulares Android modernos. Quita el filtro si necesitas x86.
-        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
+
+        // FFmpeg necesita extraer las librerías nativas
+        ndk {
+            abiFilters.addAll(listOf("x86", "x86_64", "armeabi-v7a", "arm64-v8a"))
+        }
     }
 
     buildTypes {
@@ -28,31 +30,40 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+    // Necesario para librerías que usan enlaces JNI como FFmpeg
     packaging {
-        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
-        jniLibs { useLegacyPackaging = true }
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 
 dependencies {
+    // --- Dependencias base de Android ---
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
-    // Motor de descarga: yt-dlp para Android. Soporta YouTube, TikTok,
-    // Facebook, Instagram y cientos de sitios mas, con selector de formato.
-    // Repo: https://github.com/yausername/youtubedl-android (via JitPack)
-    implementation("io.github.junkfood02.youtubedl-android:library:0.17.4")
-    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.4")
+    // --- 1. Descargador de videos (YoutubeDL / yt-dlp) ---
+    // Nota: Usamos el fork actualizado en Maven Central (JunkFood02)
+    val youtubedlAndroid = "0.18.1"
+    implementation("io.github.junkfood02.youtubedl-android:library:$youtubedlAndroid")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:$youtubedlAndroid")
 
-    // Editor de video: FFmpegKit (filtros de mejora, recorte, loudnorm, etc.)
-    // CORRECCION 2026-10-22: el FFmpegKit original (com.arthenica:6.0-2) fue
-    // retirado y sus binarios se ELIMINARON de Maven Central el 2025-04-01,
-    // por lo que esa linea rompe la compilacion hoy ("Could not find
-    // com.arthenica:ffmpeg-kit-full:6.0-2"). Se usa el fork mantenido,
-    // publicado en Maven Central con la misma API (com.arthenica.ffmpegkit.*).
-    implementation("io.github.maitrungduc1410:ffmpeg-kit-full:8.1.2")
+    // --- 2. Editor de video (FFmpeg Kit - Fork mantenido) ---
+    // El grupo original com.arthenica fue retirado de Maven Central en 2025
+    implementation("dev.ffmpegkit-maintained:ffmpeg-kit-full:8.1.7")
+
+    // --- 3. Carga de imágenes / Miniaturas (Glide) ---
+    implementation("com.github.bumptech.glide:glide:5.0.9")
+
+    // --- 4. Componentes visuales (Material Design) ---
+    implementation("com.google.android.material:material:1.13.0")
+    implementation("androidx.cardview:cardview:1.0.0")
+
+    // --- 5. Corrutinas para hilos de descarga ---
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 }
