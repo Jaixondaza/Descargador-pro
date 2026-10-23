@@ -2,14 +2,25 @@ package com.descargadorpro.app
 
 import android.Manifest
 import android.app.Activity
+import android.app.Dialog
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Log
+import android.view.Gravity
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import android.widget.MediaController
+import android.widget.TextView
+import android.widget.Toast
+import android.widget.VideoView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import java.io.File
@@ -89,5 +100,74 @@ object Galeria {
             MediaScannerConnection.scanFile(ctx, arrayOf(destino.absolutePath), arrayOf(tipo), null)
             return Uri.fromFile(destino)
         }
+    }
+
+    /**
+     * Abre un archivo ya guardado. Primero prueba con otra app (galería, VLC...).
+     * Si no hay ninguna que lo acepte, o el sistema lo rechaza por cualquier motivo,
+     * lo reproduce dentro de la propia app para que SIEMPRE se pueda ver el resultado.
+     */
+    fun abrir(act: Activity, uri: Uri, mime: String) {
+        // Android 9 o menor devuelve file://, que el sistema NO deja pasar a otras apps.
+        if (uri.scheme == "content") {
+            try {
+                act.startActivity(
+                    Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime)
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                )
+                return
+            } catch (e: Exception) {
+                Log.w("Galeria", "Sin app externa (${e.javaClass.simpleName}): ${e.message}")
+            }
+        }
+        reproducirEnApp(act, uri, mime.startsWith("audio"))
+    }
+
+    private fun dp(ctx: Context, v: Int) = (v * ctx.resources.displayMetrics.density).toInt()
+
+    /** Reproductor mínimo a pantalla completa (VideoView del sistema, sin librerías extra). */
+    private fun reproducirEnApp(act: Activity, uri: Uri, esAudio: Boolean) {
+        val dialogo = Dialog(act, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        val raiz = FrameLayout(act).apply { setBackgroundColor(Color.BLACK) }
+        val todo = { FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER
+        ) }
+
+        val video = VideoView(act)
+        val controles = MediaController(act)
+        controles.setAnchorView(video)
+        video.setMediaController(controles)
+        raiz.addView(video, todo())
+
+        if (esAudio) {
+            raiz.addView(TextView(act).apply { text = "🔊"; textSize = 72f; gravity = Gravity.CENTER }, todo())
+        }
+
+        val cerrar = TextView(act).apply {
+            text = "✕"
+            textSize = 22f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+            setOnClickListener { dialogo.dismiss() }
+        }
+        raiz.addView(
+            cerrar,
+            FrameLayout.LayoutParams(dp(act, 52), dp(act, 52), Gravity.TOP or Gravity.END)
+                .apply { topMargin = dp(act, 24) }
+        )
+
+        video.setOnPreparedListener { video.start() }
+        video.setOnErrorListener { _, _, _ ->
+            Toast.makeText(
+                act, "No se pudo reproducir el archivo. Búscalo en tu galería, carpeta DescargadorPro.",
+                Toast.LENGTH_LONG
+            ).show()
+            dialogo.dismiss()
+            true
+        }
+        dialogo.setOnDismissListener { video.stopPlayback() }
+        dialogo.setContentView(raiz)
+        video.setVideoURI(uri)
+        dialogo.show()
     }
 }
