@@ -356,6 +356,7 @@ class EditorActivity : AppCompatActivity() {
         resultadoEsAudio = p.tipo == Tipo.AUDIO
         ocupado(true)
         txtEstado.text = "Preparando…"
+        irAlFinal()
 
         lifecycleScope.launch {
             detectarCapacidades()
@@ -412,6 +413,7 @@ class EditorActivity : AppCompatActivity() {
                 txtPorcentaje.text = "100%"
                 txtEstado.text = "✅ Listo (${fmtBytes(tam)}). Se guardó en tu galería, carpeta DescargadorPro."
                 filaResultado.visibility = View.VISIBLE
+                irAlFinal()
             }
         } catch (e: Exception) {
             runOnUiThread {
@@ -436,12 +438,13 @@ class EditorActivity : AppCompatActivity() {
 
     private fun verResultado() {
         val uri = uriResultado ?: return
-        try {
-            startActivity(
-                Intent(Intent.ACTION_VIEW).setDataAndType(uri, if (resultadoEsAudio) "audio/mp4" else "video/mp4")
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            )
-        } catch (e: Exception) { toast("No se encontró una app para abrirlo") }
+        Galeria.abrir(this, uri, if (resultadoEsAudio) "audio/mp4" else "video/mp4")
+    }
+
+    /** Baja la pantalla hasta el progreso / resultado para que no haya que buscarlo. */
+    private fun irAlFinal() {
+        val sv = findViewById<ScrollView>(R.id.scrollEditor)
+        sv.post { sv.fullScroll(View.FOCUS_DOWN) }
     }
 
     private fun compartir() {
