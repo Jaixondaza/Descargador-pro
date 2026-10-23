@@ -52,16 +52,15 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Inicialización de librerías en segundo plano
-        Thread {
+        // 1. INICIALIZACIÓN SEGURA CON CORRUTINAS
+        CoroutineScope(Dispatchers.IO).launch {
             try {
-                // CORRECCIÓN: Se especifica el contexto de la Activity
-                YoutubeDL.getInstance().init(this@MainActivity) 
+                YoutubeDL.getInstance().init(applicationContext) 
                 FFmpegKitConfig.init()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
-        }.start()
+        }
 
         inicializarVistas()
         configurarListeners()
