@@ -47,22 +47,21 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
-    // --- 1. Descargador de videos (YoutubeDL / yt-dlp) ---
-    val youtubedlAndroid = "0.18.1"
+    // --- 1. Descargador de videos (Versión estable) ---
+    val youtubedlAndroid = "0.17.2" // <--- CAMBIO AQUÍ
     implementation("io.github.junkfood02.youtubedl-android:library:$youtubedlAndroid")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:$youtubedlAndroid")
 
-    // --- 2. Editor de video (FFmpeg Kit - Fork mantenido) ---
+    // --- 2. Editor de video (FFmpeg Kit) ---
     implementation("dev.ffmpegkit-maintained:ffmpeg-kit-full:8.1.7")
 
-    // --- 3. Carga de imágenes / Miniaturas (Glide) ---
-    // Versión estable compatible con compileSdk 34
+    // --- 3. Carga de imágenes (Glide) ---
     implementation("com.github.bumptech.glide:glide:4.16.0")
 
-    // --- 4. Componentes visuales (Material Design) ---
+    // --- 4. Componentes visuales ---
     implementation("com.google.android.material:material:1.13.0")
     implementation("androidx.cardview:cardview:1.0.0")
 
-    // --- 5. Corrutinas para hilos de descarga ---
+    // --- 5. Corrutinas ---
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 }
