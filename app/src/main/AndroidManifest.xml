@@ -2,17 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- 1. Permiso de Internet (Para descargar) -->
     <uses-permission android:name="android.permission.INTERNET" />
-    
-    <!-- 2. Permisos para Android 12 y anteriores (Almacenamiento) -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
-
-    <!-- 3. Permisos para Android 13+ (API 33 en adelante) -->
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-
-    <!-- 4. Permisos opcionales para evitar que la descarga se corte en segundo plano -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
@@ -24,14 +17,10 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Descargadorpro"
-        
-        <!-- IMPORTANTE: Estas dos líneas evitan errores de red y de almacenamiento -->
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true"
-        
         tools:targetApi="31">
 
-        <!-- Pantalla Principal -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -42,7 +31,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Pantalla del Editor (Asegúrate de que el nombre coincida con tu clase Kotlin) -->
         <activity
             android:name=".EditorActivity"
             android:exported="false"
