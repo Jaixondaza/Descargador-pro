@@ -55,11 +55,11 @@ class MainActivity : AppCompatActivity() {
         // INICIALIZACIÓN CORREGIDA (Sin getInstance)
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                YoutubeDL.init(applicationContext) 
-                FFmpegKitConfig.init()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+    YoutubeDL.getInstance().init(applicationContext) 
+    FFmpegKitConfig.init()
+} catch (e: Exception) {
+    e.printStackTrace()
+}
         }
 
         inicializarVistas()
