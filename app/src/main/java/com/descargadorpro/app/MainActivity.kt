@@ -53,10 +53,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // INICIALIZACIÓN REFORZADA (Punto 1 corregido)
+        // INICIALIZACIÓN
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Se usa applicationContext para evitar fugas de memoria
                 YoutubeDL.getInstance().init(applicationContext) 
                 FFmpegKitConfig.init()
             } catch (e: YoutubeDLException) {
