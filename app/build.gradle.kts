@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.jaixondaza.descargadorpro"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.jaixondaza.descargadorpro"
         minSdk = 21
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -48,17 +48,16 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
     // --- 1. Descargador de videos (YoutubeDL / yt-dlp) ---
-    // Nota: Usamos el fork actualizado en Maven Central (JunkFood02)
     val youtubedlAndroid = "0.18.1"
     implementation("io.github.junkfood02.youtubedl-android:library:$youtubedlAndroid")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:$youtubedlAndroid")
 
     // --- 2. Editor de video (FFmpeg Kit - Fork mantenido) ---
-    // El grupo original com.arthenica fue retirado de Maven Central en 2025
     implementation("dev.ffmpegkit-maintained:ffmpeg-kit-full:8.1.7")
 
     // --- 3. Carga de imágenes / Miniaturas (Glide) ---
-    implementation("com.github.bumptech.glide:glide:5.0.9")
+    // Versión estable compatible con compileSdk 34
+    implementation("com.github.bumptech.glide:glide:4.16.0")
 
     // --- 4. Componentes visuales (Material Design) ---
     implementation("com.google.android.material:material:1.13.0")
