@@ -1,183 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#121212"
-    android:fillViewport="true">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp">
+    <!-- 1. Permiso de Internet (Para descargar) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- 2. Permisos para Android 12 y anteriores (Almacenamiento) -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
-        <!-- Título de la App -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Descargador Pro"
-            android:textColor="#FFFFFF"
-            android:textSize="28sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
+    <!-- 3. Permisos para Android 13+ (API 33 en adelante) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="YouTube · TikTok · Facebook · Instagram"
-            android:textColor="#A0A0A0"
-            android:textSize="14sp"
-            android:layout_marginBottom="24dp"/>
+    <!-- 4. Permisos opcionales para evitar que la descarga se corte en segundo plano -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
-        <!-- Campo para pegar el enlace -->
-        <EditText
-            android:id="@+id/editUrl"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:background="#1E1E1E"
-            android:hint="Pega aquí el enlace del video..."
-            android:textColor="#FFFFFF"
-            android:textColorHint="#757575"
-            android:padding="16dp"
-            android:inputType="textUri"
-            android:layout_marginBottom="16dp"/>
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Descargadorpro"
+        
+        <!-- IMPORTANTE: Estas dos líneas evitan errores de red y de almacenamiento -->
+        android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true"
+        
+        tools:targetApi="31">
 
-        <!-- Botones Pegar y Analizar -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="24dp">
+        <!-- Pantalla Principal -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnPegar"
-                android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_weight="1"
-                android:text="Pegar"
-                android:textColor="#FFFFFF"
-                app:backgroundTint="#333333"
-                app:cornerRadius="12dp"
-                android:layout_marginEnd="8dp"/>
+        <!-- Pantalla del Editor (Asegúrate de que el nombre coincida con tu clase Kotlin) -->
+        <activity
+            android:name=".EditorActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAnalizar"
-                android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_weight="1"
-                android:text="Analizar"
-                android:textColor="#FFFFFF"
-                app:backgroundTint="#6200EE"
-                app:cornerRadius="12dp"
-                android:layout_marginStart="8dp"/>
-        </LinearLayout>
+    </application>
 
-        <!-- VISTA PREVIA DEL VIDEO (Oculta hasta que se analice) -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/layoutPreview"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardBackgroundColor="#1E1E1E"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="8dp"
-            android:layout_marginBottom="24dp"
-            android:visibility="gone">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <!-- Miniatura del video -->
-                <ImageView
-                    android:id="@+id/imgMiniatura"
-                    android:layout_width="match_parent"
-                    android:layout_height="180dp"
-                    android:scaleType="centerCrop"
-                    android:background="#333333"/>
-
-                <!-- Título y botón de copiar -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginTop="12dp">
-
-                    <TextView
-                        android:id="@+id/txtTitulo"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:textColor="#FFFFFF"
-                        android:textSize="16sp"
-                        android:maxLines="2"
-                        android:ellipsize="end"
-                        android:text="Título del video..."/>
-
-                    <ImageButton
-                        android:id="@+id/btnCopiarTitulo"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:src="@android:drawable/ic_menu_edit"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        app:tint="#FFFFFF"
-                        android:contentDescription="Copiar título"/>
-                </LinearLayout>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Selector de Calidad -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Calidad de descarga"
-            android:textColor="#FFFFFF"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
-
-        <Spinner
-            android:id="@+id/spinnerCalidad"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:backgroundTint="#1E1E1E"
-            android:layout_marginBottom="24dp"/>
-
-        <!-- Botón Descargar -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnDescargar"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:text="⬇ DESCARGAR"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            app:backgroundTint="#6200EE"
-            app:cornerRadius="16dp"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- Barra de progreso (Oculta por defecto) -->
-        <ProgressBar
-            android:id="@+id/progressBar"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:progressTint="#00E676"
-            android:layout_marginBottom="8dp"
-            android:visibility="gone"/>
-
-        <!-- Texto de estado (Porcentaje, MB, errores, etc.) -->
-        <TextView
-            android:id="@+id/txtEstado"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textColor="#00E676"
-            android:textSize="14sp"
-            android:gravity="center"
-            android:text="Esperando enlace..."/>
-
-    </LinearLayout>
-</ScrollView>
+</manifest>
