@@ -18,7 +18,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.bumptech.glide.Glide
-import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDL // <-- Asegúrate de que esta sea la ruta de importación
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import com.yausername.youtubedl_android.mapper.VideoFormat
 import com.yausername.youtubedl_android.mapper.VideoInfo
@@ -52,10 +52,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // INICIALIZACIÓN DIRECTA (SIN getInstance) PARA LA NUEVA LIBRERÍA 0.19.0
+        // INICIALIZACIÓN DIRECTA (SIN getInstance) PARA EL FORK 0.19.0
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                YoutubeDL.init(applicationContext) 
+                // Se pasa el contexto de la Activity directamente
+                YoutubeDL.init(this@MainActivity) 
                 FFmpegKitConfig.init()
             } catch (e: Exception) {
                 e.printStackTrace()
