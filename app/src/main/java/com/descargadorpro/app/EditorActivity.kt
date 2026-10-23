@@ -1,3 +1,5 @@
+package com.descargadorpro.app // <--- ¡ESTA LÍNEA FALTABA!
+
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -27,12 +29,12 @@ class EditorActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_editor)
 
-        // Enlazar vistas (Asegúrate de que estos IDs coincidan con tu XML)
+        // Enlazar vistas
         btnElegirVideo = findViewById(R.id.btnElegirVideo)
-        spinnerAcciones = findViewById(R.id.spinnerAcciones) // Recomiendo cambiar esto a un RecyclerView o BottomSheet después
+        spinnerAcciones = findViewById(R.id.spinnerAcciones)
         btnMejorarGuardar = findViewById(R.id.btnMejorarGuardar)
         txtEstado = findViewById(R.id.txtEstado)
-        progressBar = findViewById(R.id.progressBarEditor) // Añade un ProgressBar en tu XML
+        progressBar = findViewById(R.id.progressBarEditor)
 
         configurarSpinner()
 
@@ -91,7 +93,7 @@ class EditorActivity : AppCompatActivity() {
     private fun procesarVideo() {
         val seleccion = spinnerAcciones.selectedItemPosition
         
-        // 1. Copiar el archivo seleccionado a la caché para que FFmpeg lo lea fácilmente
+        // 1. Copiar el archivo seleccionado a la caché
         val inputFile = File(cacheDir, "input_$videoFileName")
         try {
             contentResolver.openInputStream(videoUri!!)?.use { input ->
@@ -125,10 +127,8 @@ class EditorActivity : AppCompatActivity() {
                 if (ReturnCode.isSuccess(session.returnCode)) {
                     txtEstado.text = "¡Video mejorado con éxito!\nGuardado en: ${outputFile.absolutePath}"
                     Toast.makeText(this, "Guardado en la galería de la app", Toast.LENGTH_LONG).show()
-                    // Aquí puedes añadir código para guardar en la galería del teléfono (MediaStore)
                 } else {
                     txtEstado.text = "Error al procesar. Revisa el formato del video."
-                    // Esto imprimirá en Logcat el error exacto si vuelve a fallar
                     android.util.Log.e("FFmpegError", session.failStackTrace ?: "Error desconocido")
                 }
                 
@@ -139,74 +139,52 @@ class EditorActivity : AppCompatActivity() {
     }
 
     private fun construirComandoFFmpeg(input: String, output: String, opcion: Int): String {
-        // Base: Mapear siempre el video, y el audio SOLO SI EXISTE (el signo ? evita el crash)
         var filtroVideo = ""
         var filtroAudio = ""
         var ajustesExtra = ""
 
         when (opcion) {
-            0 -> { // Mejorar calidad
-                // Se separan los filtros correctamente
+            0 -> {
                 filtroVideo = "hqdn3d=4:4:6:6,eq=contrast=1.08:brightness=0.03:saturation=1.15,unsharp=5:5:0.8:5:5:0.0"
                 filtroAudio = "loudnorm=I=-16:TP=-1.5:LRA=11"
             }
-            1 -> { // Vertical 9:16
-                // Escalar y recortar al centro
-                filtroVideo = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920"
-            }
-            2 -> { // Horizontal 16:9
-                filtroVideo = "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080"
-            }
-            3 -> { // Cuadrado 1:1
-                filtroVideo = "scale=1080:1080:force_original_aspect_ratio=increase,crop=1080:1080"
-            }
-            4 -> { // Reescalar a 1080p sin recortar
-                filtroVideo = "scale=-2:1080"
-            }
-            5 -> { // Solo audio
-                filtroVideo = "copy" // Copia el video sin tocarlo
+            1 -> filtroVideo = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920"
+            2 -> filtroVideo = "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080"
+            3 -> filtroVideo = "scale=1080:1080:force_original_aspect_ratio=increase,crop=1080:1080"
+            4 -> filtroVideo = "scale=-2:1080"
+            5 -> {
+                filtroVideo = "copy"
                 filtroAudio = "loudnorm=I=-16:TP=-1.5:LRA=11"
             }
-            6 -> { // Comprimir ligero
-                ajustesExtra = "-crf 23 -preset fast"
-            }
+            6 -> ajustesExtra = "-crf 23 -preset fast"
         }
 
-        // Construcción del comando
         val sb = StringBuilder()
-        sb.append("-y -i \"$input\" ") // -y sobreescribe si existe
+        sb.append("-y -i \"$input\" ")
         
-        // Filtros de video
         if (filtroVideo.isNotEmpty()) {
             if (filtroVideo == "copy") {
                 sb.append("-c:v copy ")
             } else {
                 sb.append("-vf \"$filtroVideo\" ")
-                sb.append("-c:v libx264 ") // Códec de video estándar
+                sb.append("-c:v libx264 ")
             }
         }
 
-        // Filtros de audio
         if (filtroAudio.isNotEmpty()) {
             sb.append("-af \"$filtroAudio\" ")
             sb.append("-c:a aac -b:a 192k ")
         } else {
-            sb.append("-c:a copy ") // Si no se pide filtro, copia el audio original
+            sb.append("-c:a copy ")
         }
 
-        // Ajustes extra (compresión)
         if (ajustesExtra.isNotEmpty()) {
             sb.append("$ajustesExtra ")
         }
 
-        // Mapeo condicional CRUCIAL: El '?' evita el error si el video no tiene audio
         sb.append("-map 0:v:0 -map 0:a:0? ")
-        
         sb.append("\"$output\"")
 
-        // Log para verificar el comando en Android Studio
-        android.util.Log.d("FFmpegCmd", "Comando: ${sb.toString()}")
-        
         return sb.toString()
     }
 }
