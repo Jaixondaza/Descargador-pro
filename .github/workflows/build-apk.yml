@@ -24,10 +24,13 @@ jobs:
         run: |
           rm -rf ~/.gradle/caches/
           rm -rf ~/.gradle/wrapper/
+          
+      - name: Limpiar carpeta build
+        run: rm -rf app/build
         
-      # COMPILAR EL MÓDULO APP EXPLÍCITAMENTE
+      # COMPILAR EL MÓDULO APP EXPLÍCITAMENTE (CON REFRESH-DEPENDENCIES)
       - name: Compilar APK
-        run: gradle :app:assembleDebug --no-daemon
+        run: gradle :app:assembleDebug --no-daemon --refresh-dependencies
         
       - uses: actions/upload-artifact@v4
         with:
