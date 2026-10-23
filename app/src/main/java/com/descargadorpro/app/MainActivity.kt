@@ -630,12 +630,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun abrirUltimo() {
         val uri = ultimoUri ?: return
-        try {
-            startActivity(
-                Intent(Intent.ACTION_VIEW).setDataAndType(uri, ultimoTipo)
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            )
-        } catch (e: Exception) { toast("No se encontró una app para abrirlo") }
+        Galeria.abrir(this, uri, ultimoTipo)
     }
 
     private fun copiarTitulo() {
