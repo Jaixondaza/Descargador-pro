@@ -55,8 +55,8 @@ class MainActivity : AppCompatActivity() {
         // Inicialización de librerías en segundo plano
         Thread {
             try {
-                // CORRECCIÓN: Se usa getInstance() para obtener la instancia única
-                YoutubeDL.getInstance().init(application) 
+                // CORRECCIÓN: Se usa 'this' como contexto
+                YoutubeDL.getInstance().init(this) 
                 FFmpegKitConfig.init()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -150,7 +150,6 @@ class MainActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // CORRECCIÓN: Se usa getInstance() para obtener la información
                 val info = YoutubeDL.getInstance().getInfo(url)
                 videoInfo = info
 
@@ -210,14 +209,11 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = YoutubeDLRequest(videoUrl)
-                
-                // Protección contra nulos en el ID del formato
                 request.addOption("-f", formatoSeleccionado.formatId ?: "")
                 
                 val dir = getExternalFilesDir(null)?.absolutePath ?: filesDir.absolutePath
                 request.addOption("-o", "$dir/%(title)s.%(ext)s")
 
-                // CORRECCIÓN: Se usa getInstance() para ejecutar la descarga
                 YoutubeDL.getInstance().execute(request) { progress, _, _ ->
                     runOnUiThread {
                         if (progress > 0) {
