@@ -19,7 +19,6 @@ import androidx.core.content.ContextCompat
 import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.bumptech.glide.Glide
 import com.yausername.youtubedl_android.YoutubeDL
-import com.yausername.youtubedl_android.YoutubeDLException
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import com.yausername.youtubedl_android.mapper.VideoFormat
 import com.yausername.youtubedl_android.mapper.VideoInfo
@@ -53,13 +52,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // INICIALIZACIÓN
+        // INICIALIZACIÓN CORREGIDA (Sin getInstance)
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                YoutubeDL.getInstance().init(applicationContext) 
+                YoutubeDL.init(applicationContext) 
                 FFmpegKitConfig.init()
-            } catch (e: YoutubeDLException) {
-                e.printStackTrace()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -152,7 +149,8 @@ class MainActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val info = YoutubeDL.getInstance().getInfo(url)
+                // CORRECCIÓN: También sin getInstance() aquí
+                val info = YoutubeDL.getInfo(url)
                 videoInfo = info
 
                 withContext(Dispatchers.Main) {
@@ -216,7 +214,8 @@ class MainActivity : AppCompatActivity() {
                 val dir = getExternalFilesDir(null)?.absolutePath ?: filesDir.absolutePath
                 request.addOption("-o", "$dir/%(title)s.%(ext)s")
 
-                YoutubeDL.getInstance().execute(request) { progress, _, _ ->
+                // CORRECCIÓN: También sin getInstance() aquí
+                YoutubeDL.execute(request) { progress, _, _ ->
                     runOnUiThread {
                         if (progress > 0) {
                             val porcentaje = progress.toInt().coerceIn(0, 100)
