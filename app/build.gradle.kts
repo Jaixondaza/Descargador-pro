@@ -48,7 +48,7 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
     // --- 1. Descargador de videos (Versión estable) ---
-    val youtubedlAndroid = "0.18.1" // <--- VUELVE A PONER ESTA VERSIÓN
+    val youtubedlAndroid = "0.17.2" // <--- VERSIÓN ESTABLE QUE SOLUCIONA EL ERROR DEL INIT
     implementation("io.github.junkfood02.youtubedl-android:library:$youtubedlAndroid")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:$youtubedlAndroid")
 
