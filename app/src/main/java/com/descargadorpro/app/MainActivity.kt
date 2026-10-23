@@ -55,8 +55,8 @@ class MainActivity : AppCompatActivity() {
         // Inicialización de librerías en segundo plano
         Thread {
             try {
-                // CORRECCIÓN: Se usa 'this' como contexto
-                YoutubeDL.getInstance().init(this) 
+                // CORRECCIÓN: Se especifica el contexto de la Activity
+                YoutubeDL.getInstance().init(this@MainActivity) 
                 FFmpegKitConfig.init()
             } catch (e: Exception) {
                 e.printStackTrace()
