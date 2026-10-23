@@ -20,12 +20,11 @@ jobs:
         with:
           gradle-version: 8.7
           
-      # Limpiar caché forzando la eliminación de carpetas
+      # Solo limpiamos la caché, sin usar 'gradle clean'
       - name: Limpiar caché de Gradle
         run: |
           rm -rf ~/.gradle/caches/
           rm -rf ~/.gradle/wrapper/
-          gradle clean
         
       # Compilar APK
       - name: Compilar APK
