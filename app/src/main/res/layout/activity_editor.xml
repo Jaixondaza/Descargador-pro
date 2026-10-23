@@ -1,131 +1,223 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121212"
-    android:fillViewport="true">
+    android:background="#13111C"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    android:scrollbars="none">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:padding="20dp">
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Editor"
+            android:text="Editor de video"
             android:textColor="#FFFFFF"
             android:textSize="28sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
+            android:textStyle="bold" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="18dp"
             android:text="Mejora tu video y adáptalo a cada red social."
-            android:textColor="#A0A0A0"
-            android:textSize="14sp"
-            android:layout_marginBottom="24dp"/>
+            android:textColor="#A09CB8"
+            android:textSize="14sp" />
 
-        <!-- Paso 1: Elegir Video -->
-        <androidx.cardview.widget.CardView
+        <!-- Video elegido -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardBackgroundColor="#1E1E1E"
-            app:cardCornerRadius="16dp"
-            android:layout_marginBottom="16dp">
-            
-            <LinearLayout
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <ImageView
+                android:id="@+id/imgPreviewEditor"
+                android:layout_width="match_parent"
+                android:layout_height="190dp"
+                android:background="#0E0C16"
+                android:contentDescription="Vista previa del video"
+                android:scaleType="centerCrop" />
+
+            <TextView
+                android:id="@+id/txtVideoElegido"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_marginTop="12dp"
+                android:ellipsize="middle"
+                android:maxLines="1"
+                android:text="Ningún video elegido"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="1. Tu video"
-                    android:textColor="#FFFFFF"
-                    android:textStyle="bold"
-                    android:textSize="16sp"
-                    android:layout_marginBottom="12dp"/>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnElegirVideo" 
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:text="Elegir video"
-                    android:textColor="#FFFFFF"
-                    app:backgroundTint="#333333"
-                    app:cornerRadius="12dp"/>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Paso 2: Acciones -->
-        <androidx.cardview.widget.CardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardBackgroundColor="#1E1E1E"
-            app:cardCornerRadius="16dp"
-            android:layout_marginBottom="24dp">
-
-            <LinearLayout
+            <TextView
+                android:id="@+id/txtVideoInfo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:layout_marginTop="2dp"
+                android:text="Toca la imagen o el botón para elegir un video"
+                android:textColor="#A09CB8"
+                android:textSize="13sp" />
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="2. ¿Qué quieres hacer?"
-                    android:textColor="#FFFFFF"
-                    android:textStyle="bold"
-                    android:textSize="16sp"
-                    android:layout_marginBottom="12dp"/>
-
-                <!-- ESTE ES EL SPINNER QUE FALTABA -->
-                <Spinner
-                    android:id="@+id/spinnerAcciones"
-                    android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:backgroundTint="#333333"/>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Botón Procesar -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnMejorarGuardar"
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:text="MEJORAR Y GUARDAR"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            app:backgroundTint="#6200EE"
-            app:cornerRadius="16dp"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- Progreso del editor -->
-        <ProgressBar
-            android:id="@+id/progressBarEditor"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:progressTint="#00E676"
-            android:layout_marginBottom="8dp"
-            android:visibility="gone"/>
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnElegirVideo"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/editor_btn_primary"
+                android:foreground="?android:attr/selectableItemBackground"
+                android:stateListAnimator="@null"
+                android:text="Elegir video"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+        </LinearLayout>
 
         <TextView
-            android:id="@+id/txtEstado"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:layout_marginBottom="10dp"
+            android:text="¿Qué quieres hacer?"
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/listaPresets"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#00E676"
-            android:textSize="14sp"
-            android:gravity="center"
-            android:text="Selecciona un video para comenzar."/>
+            android:orientation="vertical" />
 
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnProcesar"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/editor_btn_primary"
+            android:foreground="?android:attr/selectableItemBackground"
+            android:stateListAnimator="@null"
+            android:text="Mejorar y guardar"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <!-- Progreso -->
+        <LinearLayout
+            android:id="@+id/cardProgresoEditor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_card"
+            android:orientation="vertical"
+            android:padding="18dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/txtPorcentajeEditor"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0%"
+                android:textColor="#FFFFFF"
+                android:textSize="32sp"
+                android:textStyle="bold" />
+
+            <ProgressBar
+                android:id="@+id/progresoEditor"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="10dp"
+                android:layout_marginTop="10dp"
+                android:indeterminate="false"
+                android:max="1000"
+                android:maxHeight="10dp"
+                android:minHeight="10dp"
+                android:progress="0"
+                android:progressDrawable="@drawable/bg_progress" />
+
+            <TextView
+                android:id="@+id/txtEstadoEditor"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textColor="#7EF0C9"
+                android:textIsSelectable="true"
+                android:textSize="14sp" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnCancelarEditor"
+                android:layout_width="match_parent"
+                android:layout_height="46dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_btn_secondary"
+                android:foreground="?android:attr/selectableItemBackground"
+                android:stateListAnimator="@null"
+                android:text="Cancelar"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Resultado -->
+        <LinearLayout
+            android:id="@+id/filaResultado"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnVerResultado"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_btn_secondary"
+                android:foreground="?android:attr/selectableItemBackground"
+                android:stateListAnimator="@null"
+                android:text="▶  Ver resultado"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnCompartir"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:background="@drawable/editor_btn_primary"
+                android:foreground="?android:attr/selectableItemBackground"
+                android:stateListAnimator="@null"
+                android:text="Compartir"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnVolverEditor"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
+            android:background="@android:color/transparent"
+            android:stateListAnimator="@null"
+            android:text="Volver"
+            android:textAllCaps="false"
+            android:textColor="#A09CB8"
+            android:textSize="15sp" />
     </LinearLayout>
 </ScrollView>
