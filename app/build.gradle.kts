@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.jaixondaza.descargadorpro"
+    namespace = "com.descargadorpro.app"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.jaixondaza.descargadorpro"
+        applicationId = "com.descargadorpro.app"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
