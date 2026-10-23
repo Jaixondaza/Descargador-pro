@@ -32,7 +32,10 @@ jobs:
       - name: Compilar APK
         run: gradle :app:assembleDebug --no-daemon --refresh-dependencies
         
+      - name: Renombrar APK
+        run: mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/DescargadorPro.apk
+
       - uses: actions/upload-artifact@v4
         with:
           name: DescargadorPro-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/DescargadorPro.apk
