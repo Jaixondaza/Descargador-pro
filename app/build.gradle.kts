@@ -64,5 +64,5 @@ dependencies {
     implementation("androidx.cardview:cardview:1.0.0")
 
     // --- 5. Corrutinas para hilos de descarga ---
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 }
