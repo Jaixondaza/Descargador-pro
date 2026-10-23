@@ -9,9 +9,7 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
-        mavenCentral()
-        maven { url = uri("https://jitpack.io") } // <--- VITAL PARA YOUTUBEDL
+        mavenCentral() // <--- Vital para descargar la librería
+        maven { url = uri("https://jitpack.io") }
     }
 }
-rootProject.name = "Descargador-pro"
-include(":app")
