@@ -18,7 +18,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.bumptech.glide.Glide
-import com.yausername.youtubedl_android.YoutubeDL // <-- Asegúrate de que esta sea la ruta de importación
+import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import com.yausername.youtubedl_android.mapper.VideoFormat
 import com.yausername.youtubedl_android.mapper.VideoInfo
@@ -52,11 +52,9 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // INICIALIZACIÓN DIRECTA (SIN getInstance) PARA EL FORK 0.19.0
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Se pasa el contexto de la Activity directamente
-                YoutubeDL.init(this@MainActivity) 
+                YoutubeDL.getInstance().init(this@MainActivity) 
                 FFmpegKitConfig.init()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -150,8 +148,7 @@ class MainActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // LLAMADA DIRECTA SIN getInstance()
-                val info = YoutubeDL.getInfo(url)
+                val info = YoutubeDL.getInstance().getInfo(url)
                 videoInfo = info
 
                 withContext(Dispatchers.Main) {
@@ -215,8 +212,7 @@ class MainActivity : AppCompatActivity() {
                 val dir = getExternalFilesDir(null)?.absolutePath ?: filesDir.absolutePath
                 request.addOption("-o", "$dir/%(title)s.%(ext)s")
 
-                // LLAMADA DIRECTA SIN getInstance()
-                YoutubeDL.execute(request) { progress, _, _ ->
+                YoutubeDL.getInstance().execute(request) { progress, _, _ ->
                     runOnUiThread {
                         if (progress > 0) {
                             val porcentaje = progress.toInt().coerceIn(0, 100)
