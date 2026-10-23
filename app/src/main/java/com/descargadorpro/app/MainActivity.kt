@@ -52,10 +52,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // INICIALIZACIÓN CON getInstance() PARA LA VERSIÓN 0.18.1
+        // INICIALIZACIÓN CORREGIDA PARA LA VERSIÓN 0.18.1
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                YoutubeDL.getInstance().init(applicationContext)
+                YoutubeDL.init(applicationContext) // <--- SIN getInstance()
                 FFmpegKitConfig.init()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -149,7 +149,7 @@ class MainActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val info = YoutubeDL.getInstance().getInfo(url)
+                val info = YoutubeDL.getInfo(url) // <--- TAMBIÉN SIN getInstance()
                 videoInfo = info
 
                 withContext(Dispatchers.Main) {
@@ -213,7 +213,7 @@ class MainActivity : AppCompatActivity() {
                 val dir = getExternalFilesDir(null)?.absolutePath ?: filesDir.absolutePath
                 request.addOption("-o", "$dir/%(title)s.%(ext)s")
 
-                YoutubeDL.getInstance().execute(request) { progress, _, _ ->
+                YoutubeDL.execute(request) { progress, _, _ -> // <--- TAMBIÉN SIN getInstance()
                     runOnUiThread {
                         if (progress > 0) {
                             val porcentaje = progress.toInt().coerceIn(0, 100)
