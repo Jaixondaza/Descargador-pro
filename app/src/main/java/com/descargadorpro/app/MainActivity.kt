@@ -55,7 +55,8 @@ class MainActivity : AppCompatActivity() {
         // Inicialización de librerías en segundo plano
         Thread {
             try {
-                YoutubeDL.init(application) // Sintaxis corregida
+                // CORRECCIÓN: Se usa getInstance() para obtener la instancia única
+                YoutubeDL.getInstance().init(application) 
                 FFmpegKitConfig.init()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -149,8 +150,8 @@ class MainActivity : AppCompatActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Sintaxis corregida (sin .getInstance())
-                val info = YoutubeDL.getInfo(url)
+                // CORRECCIÓN: Se usa getInstance() para obtener la información
+                val info = YoutubeDL.getInstance().getInfo(url)
                 videoInfo = info
 
                 withContext(Dispatchers.Main) {
@@ -216,8 +217,8 @@ class MainActivity : AppCompatActivity() {
                 val dir = getExternalFilesDir(null)?.absolutePath ?: filesDir.absolutePath
                 request.addOption("-o", "$dir/%(title)s.%(ext)s")
 
-                // Sintaxis corregida (sin .getInstance())
-                YoutubeDL.execute(request) { progress, _, _ ->
+                // CORRECCIÓN: Se usa getInstance() para ejecutar la descarga
+                YoutubeDL.getInstance().execute(request) { progress, _, _ ->
                     runOnUiThread {
                         if (progress > 0) {
                             val porcentaje = progress.toInt().coerceIn(0, 100)
