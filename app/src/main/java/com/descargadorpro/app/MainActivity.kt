@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.bumptech.glide.Glide
 import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDLException
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import com.yausername.youtubedl_android.mapper.VideoFormat
 import com.yausername.youtubedl_android.mapper.VideoInfo
@@ -52,11 +53,14 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 1. INICIALIZACIÓN SEGURA CON CORRUTINAS
+        // INICIALIZACIÓN REFORZADA (Punto 1 corregido)
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // Se usa applicationContext para evitar fugas de memoria
                 YoutubeDL.getInstance().init(applicationContext) 
                 FFmpegKitConfig.init()
+            } catch (e: YoutubeDLException) {
+                e.printStackTrace()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
