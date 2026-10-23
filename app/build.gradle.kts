@@ -14,10 +14,8 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        // FFmpeg necesita extraer las librerías nativas
-        ndk {
-            abiFilters.addAll(listOf("x86", "x86_64", "armeabi-v7a", "arm64-v8a"))
-        }
+        // arm64 y armv7 cubren los celulares Android reales (x86 es solo para emuladores)
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
     buildTypes {
@@ -30,38 +28,26 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-    // Necesario para librerías que usan enlaces JNI como FFmpeg
+    kotlinOptions { jvmTarget = "17" }
+
     packaging {
-        jniLibs {
-            useLegacyPackaging = true
-        }
+        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+        jniLibs { useLegacyPackaging = true }
     }
 }
 
 dependencies {
-    // --- Dependencias base de Android ---
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
+    // material 1.12.0 es la última que funciona con compileSdk 34 (la 1.13.0 exige compileSdk 36)
+    implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-
-        // --- 1. Descargador de videos (Fork mantenido) ---
-    val youtubedlAndroid = "0.19.0" 
-    implementation("io.github.deniscerri.youtubedl-android:library:$youtubedlAndroid")
-    implementation("io.github.deniscerri.youtubedl-android:ffmpeg:$youtubedlAndroid")
-
-    // --- 2. Editor de video (FFmpeg Kit) ---
-    implementation("dev.ffmpegkit-maintained:ffmpeg-kit-full:8.1.7")
-
-    // --- 3. Carga de imágenes (Glide) ---
-    implementation("com.github.bumptech.glide:glide:4.16.0")
-
-    // --- 4. Componentes visuales ---
-    implementation("com.google.android.material:material:1.13.0")
-    implementation("androidx.cardview:cardview:1.0.0")
-
-    // --- 5. Corrutinas ---
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
+    // Descargador (yt-dlp): YouTube, TikTok, Facebook, Instagram...
+    implementation("io.github.junkfood02.youtubedl-android:library:0.17.4")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.4")
+
+    // Editor de video (FFmpegKit mantenido)
+    implementation("io.github.maitrungduc1410:ffmpeg-kit-full:8.1.2")
 }
