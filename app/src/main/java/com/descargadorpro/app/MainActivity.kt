@@ -1,3 +1,5 @@
+package com.descargadorpro.app
+
 import android.Manifest
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -178,7 +180,6 @@ class MainActivity : AppCompatActivity() {
         val formatos = info.formats ?: emptyList()
         formatosDisponibles = formatos.filter { it.vcodec != "none" && it.vcodec != null }
         
-        // Corrección de "Type mismatch" (Línea 215 anterior)
         val opcionesCalidad = formatosDisponibles.map { 
             val note = it.formatNote ?: it.formatId ?: "Formato"
             val ext = it.ext ?: "mp4"
@@ -206,7 +207,9 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = YoutubeDLRequest(videoUrl)
-                request.addOption("-f", formatoSeleccionado.formatId)
+                
+                // CORRECCIÓN DEL TYPE MISMATCH AQUÍ (Agregado ?: "")
+                request.addOption("-f", formatoSeleccionado.formatId ?: "")
                 
                 val dir = getExternalFilesDir(null)?.absolutePath ?: filesDir.absolutePath
                 request.addOption("-o", "$dir/%(title)s.%(ext)s")
@@ -215,7 +218,6 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread {
                         if (progress > 0) {
                             val porcentaje = progress.toInt().coerceIn(0, 100)
-                            // Se eliminó el cálculo de filesize para evitar el error de compilación
                             txtEstado.text = "Descargando: $porcentaje%"
                             progressBar.progress = porcentaje
                         }
