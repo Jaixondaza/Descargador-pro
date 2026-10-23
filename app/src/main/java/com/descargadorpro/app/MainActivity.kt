@@ -5,7 +5,6 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -29,7 +28,6 @@ import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
-    // Variables de la interfaz
     private lateinit var editUrl: EditText
     private lateinit var btnPegar: Button
     private lateinit var btnAnalizar: Button
@@ -44,7 +42,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var txtEstado: TextView
     private lateinit var progressBar: ProgressBar
     
-    // Variables de datos
     private var videoUrl: String = ""
     private var videoInfo: VideoInfo? = null
     private var formatosDisponibles: List<VideoFormat> = emptyList()
@@ -53,7 +50,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 1. INICIALIZACIÓN DE LIBRERÍAS
         Thread {
             try {
                 YoutubeDL.getInstance().init(application)
@@ -65,8 +61,6 @@ class MainActivity : AppCompatActivity() {
 
         inicializarVistas()
         configurarListeners()
-        
-        // 2. PEDIR PERMISOS DE ALMACENAMIENTO
         pedirPermisos()
     }
 
@@ -103,7 +97,7 @@ class MainActivity : AppCompatActivity() {
         btnCopiarTitulo.setOnClickListener {
             videoInfo?.let { info ->
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("Título del Video", info.title)
+                val clip = ClipData.newPlainText("Título del Video", info.title ?: "Video")
                 clipboard.setPrimaryClip(clip)
                 Toast.makeText(this, "Título copiado", Toast.LENGTH_SHORT).show()
             }
@@ -117,13 +111,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // --- FUNCIONES DE PERMISOS ---
     private fun pedirPermisos() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_MEDIA_VIDEO), 101)
             }
-        } else { // Android 12 y anteriores
+        } else {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE), 101)
             }
@@ -135,7 +128,6 @@ class MainActivity : AppCompatActivity() {
         imm.hideSoftInputFromWindow(editUrl.windowToken, 0)
     }
 
-    // --- LÓGICA DE ANÁLISIS ---
     private fun analizarVideo() {
         ocultarTeclado()
 
@@ -164,7 +156,7 @@ class MainActivity : AppCompatActivity() {
                     txtEstado.text = "Video listo para descargar"
                     txtEstado.setTextColor(android.graphics.Color.parseColor("#00E676"))
 
-                    txtTitulo.text = info.title
+                    txtTitulo.text = info.title ?: "Título no disponible"
                     Glide.with(this@MainActivity)
                         .load(info.thumbnail)
                         .placeholder(android.R.drawable.ic_menu_gallery)
@@ -186,8 +178,11 @@ class MainActivity : AppCompatActivity() {
         val formatos = info.formats ?: emptyList()
         formatosDisponibles = formatos.filter { it.vcodec != "none" && it.vcodec != null }
         
+        // Corrección de "Type mismatch" (Línea 215 anterior)
         val opcionesCalidad = formatosDisponibles.map { 
-            if (it.formatNote.isNullOrEmpty()) "${it.formatId} - ${it.ext}" else "${it.formatNote} - ${it.ext}" 
+            val note = it.formatNote ?: it.formatId ?: "Formato"
+            val ext = it.ext ?: "mp4"
+            "$note - $ext"
         }
 
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, opcionesCalidad)
@@ -195,7 +190,6 @@ class MainActivity : AppCompatActivity() {
         spinnerCalidad.adapter = adapter
     }
 
-    // --- LÓGICA DE DESCARGA ---
     private fun descargarVideo() {
         if (videoUrl.isEmpty() || videoInfo == null || formatosDisponibles.isEmpty()) return
 
@@ -214,7 +208,6 @@ class MainActivity : AppCompatActivity() {
                 val request = YoutubeDLRequest(videoUrl)
                 request.addOption("-f", formatoSeleccionado.formatId)
                 
-                // Carpeta temporal de la app
                 val dir = getExternalFilesDir(null)?.absolutePath ?: filesDir.absolutePath
                 request.addOption("-o", "$dir/%(title)s.%(ext)s")
 
@@ -222,22 +215,13 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread {
                         if (progress > 0) {
                             val porcentaje = progress.toInt().coerceIn(0, 100)
-                            
-                            val tamanoTotalBytes = if (formatoSeleccionado.filesize > 0) formatoSeleccionado.filesize else (formatoSeleccionado.filesizeApprox ?: 0L)
-                            val tamanoTotalMB = tamanoTotalBytes / (1024.0 * 1024.0)
-                            val mbDescargados = (progress / 100.0) * tamanoTotalMB
-
-                            if (tamanoTotalMB > 0) {
-                                txtEstado.text = "Descargando: $porcentaje% (${"%.2f".format(mbDescargados)} MB / ${"%.2f".format(tamanoTotalMB)} MB)"
-                            } else {
-                                txtEstado.text = "Descargando: $porcentaje%"
-                            }
+                            // Se eliminó el cálculo de filesize para evitar el error de compilación
+                            txtEstado.text = "Descargando: $porcentaje%"
                             progressBar.progress = porcentaje
                         }
                     }
                 }
 
-                // Buscar el archivo recién descargado para pasarlo a la galería
                 val archivoDescargado = File(dir).listFiles()?.maxByOrNull { it.lastModified() }
 
                 withContext(Dispatchers.Main) {
@@ -246,7 +230,6 @@ class MainActivity : AppCompatActivity() {
                     btnAnalizar.isEnabled = true
 
                     if (archivoDescargado != null) {
-                        // GUARDAR EN GALERÍA
                         val guardadoExitoso = guardarEnGaleria(archivoDescargado)
                         if (guardadoExitoso) {
                             txtEstado.text = "¡Descarga completada y guardada en Galería!"
@@ -274,7 +257,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // --- FUNCIÓN PARA GUARDAR EN LA GALERÍA (API MODERNA) ---
     private fun guardarEnGaleria(archivoOriginal: File): Boolean {
         return try {
             val values = ContentValues().apply {
@@ -298,8 +280,6 @@ class MainActivity : AppCompatActivity() {
                 values.clear()
                 values.put(MediaStore.Video.Media.IS_PENDING, 0)
                 resolver.update(uri, values, null, null)
-
-                // Borrar el archivo original de la carpeta privada para no duplicar espacio
                 archivoOriginal.delete()
                 true
             } else {
