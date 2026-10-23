@@ -47,10 +47,10 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
-    // --- 1. Descargador de videos (Versión estable) ---
-    val youtubedlAndroid = "0.18.1" // <--- CAMBIA A 0.18.1
-    implementation("io.github.junkfood02.youtubedl-android:library:$youtubedlAndroid")
-    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:$youtubedlAndroid")
+        // --- 1. Descargador de videos (Fork mantenido) ---
+    val youtubedlAndroid = "0.19.0" 
+    implementation("io.github.deniscerri.youtubedl-android:library:$youtubedlAndroid")
+    implementation("io.github.deniscerri.youtubedl-android:ffmpeg:$youtubedlAndroid")
 
     // --- 2. Editor de video (FFmpeg Kit) ---
     implementation("dev.ffmpegkit-maintained:ffmpeg-kit-full:8.1.7")
