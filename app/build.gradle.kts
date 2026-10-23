@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.tu.paquete" // Reemplaza con tu package real
+    namespace = "com.jaixondaza.descargadorpro"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.tu.paquete"
+        applicationId = "com.jaixondaza.descargadorpro"
         minSdk = 21
         targetSdk = 35
         versionCode = 1
