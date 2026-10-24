@@ -59,5 +59,11 @@
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
             android:exported="false"
             android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".EstadosActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize"
+            android:exported="false"
+            android:screenOrientation="portrait" />
     </application>
 </manifest>
