@@ -8,8 +8,10 @@ import android.app.ApplicationExitInfo
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -37,7 +39,10 @@ class App : Application() {
         }
 
         registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
-            override fun onActivityResumed(activity: Activity) { avisar(activity) }
+            override fun onActivityResumed(activity: Activity) {
+                avisar(activity)
+                conectarEstados(activity)
+            }
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
             override fun onActivityStarted(activity: Activity) {}
             override fun onActivityPaused(activity: Activity) {}
@@ -45,6 +50,14 @@ class App : Application() {
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
             override fun onActivityDestroyed(activity: Activity) {}
         })
+    }
+
+    /** Conecta el botón "Estados" de la pantalla principal (así no hay que tocar MainActivity.kt). */
+    private fun conectarEstados(activity: Activity) {
+        if (activity !is MainActivity) return
+        activity.findViewById<View>(R.id.btnEstados)?.setOnClickListener {
+            activity.startActivity(Intent(activity, EstadosActivity::class.java))
+        }
     }
 
     private fun avisar(activity: Activity) {
