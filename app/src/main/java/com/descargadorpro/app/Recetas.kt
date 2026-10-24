@@ -3,7 +3,36 @@ package com.descargadorpro.app
 import java.io.File
 
 /** Tipos de ajuste que ofrece el editor. */
-enum class Tipo { MEJORAR, VERTICAL, HORIZONTAL, CUADRADO, ESCALAR, AUDIO, COMPRIMIR }
+enum class Tipo { MEJORAR, VERTICAL, HORIZONTAL, CUADRADO, ESCALAR, ESCALAR_2K, ESCALAR_4K, AUDIO, COMPRIMIR }
+
+/** Un ajuste que se muestra en la lista del editor. */
+data class Preset(val icono: String, val titulo: String, val detalle: String, val tipo: Tipo)
+
+/** Lista de ajustes del editor, en el orden en que aparecen. */
+val PRESETS = listOf(
+    Preset("✨", "Mejorar calidad", "Más nitidez y color, menos ruido", Tipo.MEJORAR),
+    Preset("📱", "Vertical 9:16", "1080×1920 · TikTok, Reels, Shorts", Tipo.VERTICAL),
+    Preset("🖥", "Horizontal 16:9", "1920×1080 · YouTube", Tipo.HORIZONTAL),
+    Preset("⬛", "Cuadrado 1:1", "1080×1080 · Feed de Instagram", Tipo.CUADRADO),
+    Preset("🔎", "Subir a 1080p", "Agranda sin recortar", Tipo.ESCALAR),
+    Preset("🔍", "Subir a 1440p (2K)", "2560×1440 · Agranda sin recortar", Tipo.ESCALAR_2K),
+    Preset("🎬", "Subir a 4K (2160p)", "3840×2160 · Lento y pesado, mejor con videos cortos", Tipo.ESCALAR_4K),
+    Preset("🔊", "Mejorar audio", "Volumen parejo · se guarda solo el audio (M4A)", Tipo.AUDIO),
+    Preset("🗜", "Comprimir", "Archivo más liviano con buena calidad", Tipo.COMPRIMIR)
+)
+
+/** Avisa que un video largo en 4K tarda muchísimo; si la persona acepta, ejecuta [seguir]. */
+fun confirmarVideoLargo(act: android.app.Activity, segundos: Long, seguir: () -> Unit) {
+    android.app.AlertDialog.Builder(act)
+        .setTitle("Video largo en 4K")
+        .setMessage(
+            "Este video dura unos $segundos segundos. Pasarlo a 4K puede tardar muchísimo y el archivo " +
+                "quedará muy pesado. Funciona mejor con videos de menos de 1 minuto.\n\n¿Continuar de todos modos?"
+        )
+        .setPositiveButton("Continuar") { _, _ -> seguir() }
+        .setNegativeButton("Cancelar", null)
+        .show()
+}
 
 /**
  * Arma los comandos de FFmpeg con lo que SÍ trae el FFmpeg instalado.
@@ -53,8 +82,13 @@ class Recetas(
                 val g = "crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080:flags=lanczos"
                 Pair(unir(g, mejoras(true)), g)
             }
-            Tipo.ESCALAR -> {
-                val g = "scale='if(gt(iw,ih),-2,1080)':'if(gt(iw,ih),1080,-2)':flags=lanczos"
+            Tipo.ESCALAR, Tipo.ESCALAR_2K, Tipo.ESCALAR_4K -> {
+                val alto = when (t) {
+                    Tipo.ESCALAR_2K -> 1440
+                    Tipo.ESCALAR_4K -> 2160
+                    else -> 1080
+                }
+                val g = "scale='if(gt(iw,ih),-2,$alto)':'if(gt(iw,ih),$alto,-2)':flags=lanczos"
                 val nitidez = if (tiene("unsharp")) listOf("unsharp=5:5:0.7:5:5:0.0") else emptyList()
                 Pair(unir(g, nitidez), g)
             }
@@ -73,10 +107,24 @@ class Recetas(
         return if (disp.isEmpty()) listOf("mpeg4") else disp
     }
 
-    private fun argsCodificador(nombre: String, comprimir: Boolean): List<String> = when (nombre) {
-        "libx264" -> listOf("-c:v", "libx264", "-preset", "veryfast", "-crf", if (comprimir) "27" else "20")
-        "h264_mediacodec" -> listOf("-c:v", "h264_mediacodec", "-b:v", if (comprimir) "3M" else "10M")
-        else -> listOf("-c:v", "mpeg4", "-q:v", if (comprimir) "7" else "3")
+    private fun argsCodificador(nombre: String, t: Tipo): List<String> {
+        val comprimir = t == Tipo.COMPRIMIR
+        return when (nombre) {
+            "libx264" -> listOf(
+                "-c:v", "libx264", "-preset", "veryfast",
+                "-crf", if (comprimir) "27" else if (t == Tipo.ESCALAR_4K) "22" else "20"
+            )
+            "h264_mediacodec" -> listOf(
+                "-c:v", "h264_mediacodec",
+                "-b:v", when (t) {
+                    Tipo.COMPRIMIR -> "3M"
+                    Tipo.ESCALAR_2K -> "16M"
+                    Tipo.ESCALAR_4K -> "35M"
+                    else -> "10M"
+                }
+            )
+            else -> listOf("-c:v", "mpeg4", "-q:v", if (comprimir) "7" else "3")
+        }
     }
 
     private fun filtroAudio(): String? = when {
@@ -106,7 +154,7 @@ class Recetas(
                     if (af != null) a += listOf("-af", af)
                     a += listOf("-c:a", "aac", "-b:a", "192k", "-ar", "48000")
                 } else a += "-an"
-                a += argsCodificador(cod, t == Tipo.COMPRIMIR)
+                a += argsCodificador(cod, t)
                 a += listOf("-pix_fmt", "yuv420p", "-movflags", "+faststart", salida.absolutePath)
                 intentos += a
             }
