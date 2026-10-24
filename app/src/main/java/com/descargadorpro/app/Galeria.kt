@@ -26,12 +26,16 @@ import androidx.core.content.ContextCompat
 import java.io.File
 import java.io.IOException
 
-/** Guarda archivos en la galería (Movies/DescargadorPro o Music/DescargadorPro). */
+/** Guarda archivos en la galería (Movies, Music o Pictures / DescargadorPro). */
 object Galeria {
 
     private val EXT_AUDIO = setOf("mp3", "m4a", "aac", "opus", "ogg", "wav", "flac")
 
+    private val EXT_IMAGEN = setOf("jpg", "jpeg", "png", "webp")
+
     fun esAudio(archivo: File) = archivo.extension.lowercase() in EXT_AUDIO
+
+    fun esImagen(archivo: File) = archivo.extension.lowercase() in EXT_IMAGEN
 
     fun mime(archivo: File): String = when (archivo.extension.lowercase()) {
         "mp4", "m4v" -> "video/mp4"
@@ -43,6 +47,9 @@ object Galeria {
         "opus", "ogg" -> "audio/ogg"
         "wav" -> "audio/wav"
         "flac" -> "audio/flac"
+        "jpg", "jpeg" -> "image/jpeg"
+        "png" -> "image/png"
+        "webp" -> "image/webp"
         else -> "video/mp4"
     }
 
@@ -62,14 +69,20 @@ object Galeria {
 
     fun guardar(ctx: Context, archivo: File): Uri {
         val audio = esAudio(archivo)
+        val imagen = esImagen(archivo)
         val tipo = mime(archivo)
-        val carpetaPublica = if (audio) Environment.DIRECTORY_MUSIC else Environment.DIRECTORY_MOVIES
+        val carpetaPublica = when {
+            audio -> Environment.DIRECTORY_MUSIC
+            imagen -> Environment.DIRECTORY_PICTURES
+            else -> Environment.DIRECTORY_MOVIES
+        }
 
         if (Build.VERSION.SDK_INT >= 29) {
-            val coleccion = if (audio)
-                MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-            else
-                MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            val coleccion = when {
+                audio -> MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                imagen -> MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                else -> MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            }
 
             val valores = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, archivo.name)
