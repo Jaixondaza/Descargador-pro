@@ -50,4 +50,7 @@ dependencies {
 
         // Editor de video (FFmpegKit con libx264)
     implementation("dev.ffmpegkit-maintained:ffmpeg-kit-full-gpl:8.1.7")
+        // Editor de video (FFmpegKit con libx264)
+    implementation("dev.ffmpegkit-maintained:ffmpeg-kit-full-gpl:8.1.7")
+    implementation("com.arthenica:smart-exception-java:0.2.1")
 }
