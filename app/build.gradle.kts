@@ -48,6 +48,6 @@ dependencies {
     implementation("io.github.junkfood02.youtubedl-android:library:0.17.4")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.17.4")
 
-    // Editor de video (FFmpegKit mantenido)
-    implementation("io.github.maitrungduc1410:ffmpeg-kit-full:8.1.2")
+        // Editor de video (FFmpegKit con libx264)
+    implementation("dev.ffmpegkit-maintained:ffmpeg-kit-full-gpl:8.1.7")
 }
