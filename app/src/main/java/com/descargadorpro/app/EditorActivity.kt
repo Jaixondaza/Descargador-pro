@@ -31,8 +31,6 @@ import kotlin.math.min
  */
 class EditorActivity : AppCompatActivity() {
 
-    private enum class Tipo { MEJORAR, VERTICAL, HORIZONTAL, CUADRADO, ESCALAR, AUDIO, COMPRIMIR }
-
     private data class Preset(val icono: String, val titulo: String, val detalle: String, val tipo: Tipo)
 
     private val presets = listOf(
@@ -71,11 +69,6 @@ class EditorActivity : AppCompatActivity() {
 
     private var filtros: Set<String>? = null
     private var codificadores: Set<String>? = null
-    // Si no se pudo detectar, se asume solo lo que siempre trae un FFmpeg sin licencia GPL
-    private val filtrosSeguros = setOf(
-        "crop", "scale", "unsharp", "curves", "hue", "loudnorm", "dynaudnorm", "atadenoise", "format"
-    )
-
     private val reFiltro = Regex("""\s[TSC.]{3}\s+(\w+)\s+[AVN|]+->[AVN|]+""")
     private val reCodificador = Regex("""\s[VAS][.A-Z]{5}\s+(\w+)\s""")
 
@@ -232,101 +225,7 @@ class EditorActivity : AppCompatActivity() {
         }
     }
 
-    // ------------------------------------------------------------ recetas de FFmpeg
-
-    private fun tiene(f: String) = (filtros ?: filtrosSeguros).contains(f)
-
-    private fun mejoras(suave: Boolean): List<String> {
-        val l = mutableListOf<String>()
-        if (tiene("hqdn3d")) l += if (suave) "hqdn3d=2:2:4:4" else "hqdn3d=4:4:6:6"
-        else if (tiene("atadenoise")) l += "atadenoise=s=5"
-        if (tiene("eq")) {
-            l += if (suave) "eq=saturation=1.08" else "eq=contrast=1.08:brightness=0.03:saturation=1.15"
-        } else {
-            if (tiene("curves")) l += "curves=preset=medium_contrast"
-            if (tiene("hue")) l += if (suave) "hue=s=1.08" else "hue=s=1.15"
-        }
-        if (tiene("unsharp")) l += if (suave) "unsharp=5:5:0.6:5:5:0.0" else "unsharp=5:5:0.8:5:5:0.0"
-        return l
-    }
-
-    /** Devuelve (receta completa, receta mínima de respaldo). */
-    private fun cadenas(t: Tipo): Pair<String?, String?> {
-        fun unir(base: String, extra: List<String>) = (listOf(base) + extra).joinToString(",")
-        return when (t) {
-            Tipo.MEJORAR -> Pair(mejoras(false).joinToString(",").ifEmpty { null }, null)
-            Tipo.VERTICAL -> {
-                val g = "crop='min(iw,ih*9/16)':'min(ih,iw*16/9)',scale=1080:1920:flags=lanczos"
-                Pair(unir(g, mejoras(true)), g)
-            }
-            Tipo.HORIZONTAL -> {
-                val g = "crop='min(iw,ih*16/9)':'min(ih,iw*9/16)',scale=1920:1080:flags=lanczos"
-                Pair(unir(g, mejoras(true)), g)
-            }
-            Tipo.CUADRADO -> {
-                val g = "crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080:flags=lanczos"
-                Pair(unir(g, mejoras(true)), g)
-            }
-            Tipo.ESCALAR -> {
-                val g = "scale='if(gt(iw,ih),-2,1080)':'if(gt(iw,ih),1080,-2)':flags=lanczos"
-                val nitidez = if (tiene("unsharp")) listOf("unsharp=5:5:0.7:5:5:0.0") else emptyList()
-                Pair(unir(g, nitidez), g)
-            }
-            Tipo.COMPRIMIR -> {
-                val g = "scale='if(gt(iw,ih),-2,min(1080,iw))':'if(gt(iw,ih),min(1080,ih),-2)'"
-                Pair(g, g)
-            }
-            Tipo.AUDIO -> Pair(null, null)
-        }
-    }
-
-    private fun listaCodificadores(): List<String> {
-        val orden = listOf("libx264", "h264_mediacodec", "mpeg4")
-        val c = codificadores ?: return orden
-        val disp = orden.filter { it in c }
-        return if (disp.isEmpty()) listOf("mpeg4") else disp
-    }
-
-    private fun argsCodificador(nombre: String, comprimir: Boolean): List<String> = when (nombre) {
-        "libx264" -> listOf("-c:v", "libx264", "-preset", "veryfast", "-crf", if (comprimir) "27" else "20")
-        "h264_mediacodec" -> listOf("-c:v", "h264_mediacodec", "-b:v", if (comprimir) "3M" else "10M")
-        else -> listOf("-c:v", "mpeg4", "-q:v", if (comprimir) "7" else "3")
-    }
-
-    private fun filtroAudio(): String? = when {
-        tiene("loudnorm") -> "loudnorm=I=-16:TP=-1.5:LRA=11"
-        tiene("dynaudnorm") -> "dynaudnorm"
-        else -> null
-    }
-
-    private fun armarIntentos(entrada: File, salida: File, t: Tipo): List<List<String>> {
-        val af = filtroAudio()
-        if (t == Tipo.AUDIO) {
-            val a = mutableListOf("-y", "-i", entrada.absolutePath, "-vn")
-            if (af != null) a += listOf("-af", af)
-            a += listOf("-c:a", "aac", "-b:a", "192k", "-ar", "48000", salida.absolutePath)
-            return listOf(a)
-        }
-        val (completa, minima) = cadenas(t)
-        val recetas = mutableListOf<String?>()
-        recetas += completa
-        if (minima != null && minima != completa) recetas += minima
-        val intentos = mutableListOf<List<String>>()
-        for (vf in recetas) {
-            for (cod in listaCodificadores()) {
-                val a = mutableListOf("-y", "-i", entrada.absolutePath)
-                if (vf != null) a += listOf("-vf", vf)
-                if (tieneAudio) {
-                    if (af != null) a += listOf("-af", af)
-                    a += listOf("-c:a", "aac", "-b:a", "192k", "-ar", "48000")
-                } else a += "-an"
-                a += argsCodificador(cod, t == Tipo.COMPRIMIR)
-                a += listOf("-pix_fmt", "yuv420p", "-movflags", "+faststart", salida.absolutePath)
-                intentos += a
-            }
-        }
-        return intentos
-    }
+    // Las recetas de FFmpeg (filtros y codificadores) están en Recetas.kt
 
     private suspend fun detectarCapacidades() = withContext(Dispatchers.IO) {
         if (filtros != null && codificadores != null) return@withContext
@@ -364,7 +263,7 @@ class EditorActivity : AppCompatActivity() {
             val carpeta = File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "EditorPro").apply { mkdirs() }
             val ext = if (resultadoEsAudio) "m4a" else "mp4"
             val salida = File(carpeta, "editado_${System.currentTimeMillis()}.$ext")
-            val intentos = armarIntentos(entrada, salida, p.tipo)
+            val intentos = Recetas(filtros, codificadores, tieneAudio).armarIntentos(entrada, salida, p.tipo)
             correr(intentos, 0, salida)
         }
     }
@@ -436,4 +335,78 @@ class EditorActivity : AppCompatActivity() {
         } catch (e: Exception) {
             runOnUiThread {
                 ocupado(false)
-                txtEstado.text = "Se procesó, pero no se pudo guarda
+                txtEstado.text = "Se procesó, pero no se pudo guardar en la galería: ${e.message}"
+            }
+        }
+    }
+
+    private fun ocupado(si: Boolean) {
+        procesando = si
+        cardProgreso.visibility = View.VISIBLE
+        btnProcesar.isEnabled = !si && videoOriginal != null
+        btnElegir.isEnabled = !si
+        btnCancelar.visibility = if (si) View.VISIBLE else View.GONE
+        filaResultado.visibility = View.GONE
+        if (si) {
+            progreso.progress = 0
+            txtPorcentaje.text = "0%"
+        }
+    }
+
+    private fun verResultado() {
+        val uri = uriResultado ?: return
+        Galeria.abrir(this, uri, if (resultadoEsAudio) "audio/mp4" else "video/mp4")
+    }
+
+    /** Baja la pantalla hasta el progreso / resultado para que no haya que buscarlo. */
+    private fun irAlFinal() {
+        val sv = findViewById<ScrollView>(R.id.scrollEditor)
+        sv.post { sv.fullScroll(View.FOCUS_DOWN) }
+    }
+
+    private fun compartir() {
+        val uri = uriResultado ?: return
+        if (uri.scheme != "content") { toast("Compártelo desde tu galería, carpeta DescargadorPro"); return }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = if (resultadoEsAudio) "audio/mp4" else "video/mp4"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(intent, "Compartir"))
+    }
+
+    // ------------------------------------------------------------ utilidades
+
+    private fun nombreDesdeUri(uri: Uri): String? {
+        contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (idx >= 0 && cursor.moveToFirst()) return cursor.getString(idx)
+        }
+        return uri.lastPathSegment
+    }
+
+    private fun fondo(color: String, borde: String, radioDp: Int, grosorDp: Int) = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = dp(radioDp).toFloat()
+        setColor(Color.parseColor(color))
+        setStroke(dp(grosorDp), Color.parseColor(borde))
+    }
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    private fun fmtBytes(b: Long): String = when {
+        b >= 1_000_000_000L -> String.format(Locale.getDefault(), "%.2f GB", b / 1e9)
+        b >= 1_000_000L -> String.format(Locale.getDefault(), "%.1f MB", b / 1e6)
+        else -> String.format(Locale.getDefault(), "%.0f KB", b / 1e3)
+    }
+
+    private fun fmtDuracion(seg: Int): String {
+        val h = seg / 3600
+        val m = (seg % 3600) / 60
+        val s = seg % 60
+        return if (h > 0) String.format(Locale.US, "%d:%02d:%02d", h, m, s)
+        else String.format(Locale.US, "%d:%02d", m, s)
+    }
+
+    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+}
