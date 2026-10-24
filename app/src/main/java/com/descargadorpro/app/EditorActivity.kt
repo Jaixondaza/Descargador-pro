@@ -31,17 +31,7 @@ import kotlin.math.min
  */
 class EditorActivity : AppCompatActivity() {
 
-    private data class Preset(val icono: String, val titulo: String, val detalle: String, val tipo: Tipo)
-
-    private val presets = listOf(
-        Preset("✨", "Mejorar calidad", "Más nitidez y color, menos ruido", Tipo.MEJORAR),
-        Preset("📱", "Vertical 9:16", "1080×1920 · TikTok, Reels, Shorts", Tipo.VERTICAL),
-        Preset("🖥", "Horizontal 16:9", "1920×1080 · YouTube", Tipo.HORIZONTAL),
-        Preset("⬛", "Cuadrado 1:1", "1080×1080 · Feed de Instagram", Tipo.CUADRADO),
-        Preset("🔎", "Subir a 1080p", "Agranda sin recortar", Tipo.ESCALAR),
-        Preset("🔊", "Mejorar audio", "Volumen parejo · se guarda solo el audio (M4A)", Tipo.AUDIO),
-        Preset("🗜", "Comprimir", "Archivo más liviano con buena calidad", Tipo.COMPRIMIR)
-    )
+    private val presets = PRESETS
 
     private lateinit var imgPreview: ImageView
     private lateinit var txtElegido: TextView
@@ -241,13 +231,17 @@ class EditorActivity : AppCompatActivity() {
 
     // ------------------------------------------------------------ procesar
 
-    private fun procesar() {
+    private fun procesar(confirmado: Boolean = false) {
         val entrada = videoOriginal
         if (entrada == null) { toast("Primero elige un video"); return }
         if (procesando) return
         val p = presets[seleccion]
         if (p.tipo == Tipo.AUDIO && !tieneAudio) { toast("Este video no tiene audio"); return }
         if (!Galeria.permisoOk(this)) { toast("Acepta el permiso y toca el botón otra vez"); return }
+        if (p.tipo == Tipo.ESCALAR_4K && duracionMs > 60_000 && !confirmado) {
+            confirmarVideoLargo(this, duracionMs / 1000) { procesar(true) }
+            return
+        }
 
         procesando = true
         cancelado = false
