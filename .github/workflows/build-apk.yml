@@ -28,14 +28,41 @@ jobs:
       - name: Limpiar carpeta build
         run: rm -rf app/build
         
+      # CLAVE DE FIRMA FIJA (secretos KEYSTORE_BASE64 y CLAVE_FIRMA del repositorio)
+      - name: Preparar clave de firma
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          CLAVE_FIRMA: ${{ secrets.CLAVE_FIRMA }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$CLAVE_FIRMA" ]; then
+            if ! echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/firma.p12" 2>/dev/null; then
+              echo "::error::El secreto KEYSTORE_BASE64 esta incompleto o mal pegado."
+              exit 1
+            fi
+            if ! SALIDA=$(keytool -list -storetype PKCS12 -keystore "$RUNNER_TEMP/firma.p12" -storepass "$CLAVE_FIRMA" 2>&1); then
+              echo "::error::No se pudo abrir la clave. Revisa que KEYSTORE_BASE64 y CLAVE_FIRMA esten bien pegados."
+              echo "$SALIDA"
+              exit 1
+            fi
+            echo "Huella de la clave que se usara para firmar:"
+            echo "$SALIDA" | grep -i "fingerprint"
+            echo "FIRMA_ARCHIVO=$RUNNER_TEMP/firma.p12" >> "$GITHUB_ENV"
+            echo "FIRMA_CLAVE=$CLAVE_FIRMA" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No hay clave de firma fija (faltan los secretos KEYSTORE_BASE64 y CLAVE_FIRMA). Este APK NO se podra actualizar encima de otro."
+          fi
+
       # COMPILAR EL MÓDULO APP EXPLÍCITAMENTE (CON REFRESH-DEPENDENCIES)
       - name: Compilar APK
         run: gradle :app:assembleDebug --no-daemon --refresh-dependencies
         
       - name: Renombrar APK
-        run: mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/DescargadorPro.apk
+        run: |
+          if [ -n "$FIRMA_ARCHIVO" ]; then NOMBRE="DescargadorPro.apk"; else NOMBRE="DescargadorPro-SIN-CLAVE-FIJA.apk"; fi
+          mv app/build/outputs/apk/debug/app-debug.apk "app/build/outputs/apk/debug/$NOMBRE"
+          echo "APK_NOMBRE=$NOMBRE" >> "$GITHUB_ENV"
 
       - uses: actions/upload-artifact@v4
         with:
           name: DescargadorPro-APK
-          path: app/build/outputs/apk/debug/DescargadorPro.apk
+          path: app/build/outputs/apk/debug/${{ env.APK_NOMBRE }}
