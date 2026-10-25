@@ -12,6 +12,7 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.view.WindowManager
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -42,6 +43,7 @@ class App : Application() {
             override fun onActivityResumed(activity: Activity) {
                 avisar(activity)
                 conectarEstados(activity)
+                mantenerPantalla(activity)
             }
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
             override fun onActivityStarted(activity: Activity) {}
@@ -50,6 +52,13 @@ class App : Application() {
             override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
             override fun onActivityDestroyed(activity: Activity) {}
         })
+    }
+
+    /** Mantiene la pantalla encendida mientras se usa la app, para que no se corten descargas ni procesados. */
+    private fun mantenerPantalla(activity: Activity) {
+        if (activity is MainActivity || activity is EditorActivity) {
+            activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 
     /** Conecta el botón "Estados" de la pantalla principal (así no hay que tocar MainActivity.kt). */
