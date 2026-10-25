@@ -554,9 +554,11 @@ class MainActivity : AppCompatActivity() {
         btnCancelar.visibility = View.VISIBLE
         btnDescargar.isEnabled = false
         btnDescargar.text = "Descargando…"
+        DescargaServicio.iniciar(this)
         pintarProgreso(seg)
 
         lifecycleScope.launch {
+            var terminoBien = false
             try {
                 val resultado = withContext(Dispatchers.IO) {
                     val req = YoutubeDLRequest(url)
@@ -590,11 +592,13 @@ class MainActivity : AppCompatActivity() {
                 txtVelocidad.text = ""
                 txtEstado.text = "✅ Listo. El archivo ya está en tu galería (carpeta DescargadorPro)."
                 btnAbrir.visibility = View.VISIBLE
+                terminoBien = true
             } catch (e: Exception) {
                 txtEstado.text = if (cancelado) "Descarga cancelada." else "No se pudo descargar:\n${mensajeAmable(e)}"
                 txtVelocidad.text = ""
             } finally {
                 descargando = false
+                DescargaServicio.terminar(terminoBien, cancelado)
                 btnCancelar.visibility = View.GONE
                 btnDescargar.isEnabled = true
                 btnDescargar.text = "Descargar"
@@ -621,6 +625,7 @@ class MainActivity : AppCompatActivity() {
             s.dosFlujosActivo() -> "Descargando video…"
             else -> "Descargando…"
         }
+        DescargaServicio.progreso(p.toInt(), "${txtEstado.text} ${p.toInt()}%")
     }
 
     private fun cancelar() {
