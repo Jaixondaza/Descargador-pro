@@ -157,9 +157,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, EditorActivity::class.java))
         }
         findViewById<Button>(R.id.btnMisVideos).setOnClickListener {
-            try {
-                startActivity(Intent(Intent.ACTION_VIEW, MediaStore.Video.Media.EXTERNAL_CONTENT_URI))
-            } catch (e: Exception) { toast("No se encontró una app de galería") }
+            startActivity(Intent(this, HistorialActivity::class.java))
         }
 
         inputUrl.imeOptions = EditorInfo.IME_ACTION_GO
