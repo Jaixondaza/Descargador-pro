@@ -262,6 +262,15 @@
             android:textColor="#8C88A6"
             android:textSize="12.5sp" />
 
+        <CheckBox
+            android:id="@+id/chkSoloWifi"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Descargar solo con Wi-Fi (ahorra datos)"
+            android:textColor="#D9D6E8"
+            android:textSize="14sp" />
+
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btnDescargar"
             android:layout_width="match_parent"
