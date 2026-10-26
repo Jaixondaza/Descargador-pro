@@ -28,6 +28,17 @@ jobs:
       - name: Limpiar carpeta build
         run: rm -rf app/build
         
+      # ALARMA: avisa en segundos si un archivo grande se cortó al subirlo a GitHub
+      - name: Verificar que los archivos grandes estén completos
+        run: |
+          for f in app/src/main/java/com/descargadorpro/app/MainActivity.kt; do
+            if ! tail -n 1 "$f" | grep -q "FIN-ARCHIVO"; then
+              echo "::error::$f NO esta completo o no es la version mas reciente (se corto al subirlo). Subelo de nuevo con Add file > Upload files, sin pegar el texto."
+              exit 1
+            fi
+          done
+          echo "Archivos grandes completos."
+
       # CLAVE DE FIRMA FIJA (secretos KEYSTORE_BASE64 y CLAVE_FIRMA del repositorio)
       - name: Preparar clave de firma
         env:
