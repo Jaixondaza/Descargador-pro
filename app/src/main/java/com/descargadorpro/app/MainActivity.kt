@@ -73,6 +73,7 @@ class MainActivity : AppCompatActivity() {
     private var tituloActual = ""
     private var ultimoUri: Uri? = null
     private var ultimoTipo = "video/mp4"
+    @Volatile private var procesoActual: String? = null
 
     private data class Opcion(
         val etiqueta: String,
@@ -464,4 +465,255 @@ class MainActivity : AppCompatActivity() {
         val res = o.altura
         return if (ffmpegListo) {
             val orden = (if (res != null) "res:$res" else "res") + ",vcodec:h264,acodec:aac"
-            listOf("-f" to "bv*+ba/b", "-S" to orden, "--merge
+            listOf(
+                "-f" to "bv*+ba/b",
+                "-S" to orden,
+                "--merge-output-format" to "mp4"
+            )
+        } else {
+            // Sin FFmpeg no se pueden unir video y audio: se pide un archivo ya combinado
+            if (res != null) listOf("-f" to "b[height<=$res][ext=mp4]/b[height<=$res]/b[ext=mp4]/b")
+            else listOf("-f" to "b[ext=mp4]/b")
+        }
+    }
+
+    private fun descargar() {
+        if (descargando) return
+        val url = analizadaUrl ?: urlValida() ?: return
+        if (!motorListo) { toast("El motor se está preparando, espera un momento"); return }
+        if (!Galeria.permisoOk(this)) {
+            toast("Concede el permiso de almacenamiento y vuelve a tocar Descargar")
+            return
+        }
+        ocultarTeclado()
+
+        val opcion = opciones[seleccion]
+        val idProceso = "dl_" + System.currentTimeMillis()
+        procesoActual = idProceso
+        descargando = true
+        cancelado = false
+        ultimoUri = null
+
+        btnDescargar.isEnabled = false
+        btnAnalizar.isEnabled = false
+        cardProgreso.visibility = View.VISIBLE
+        btnCancelar.visibility = View.VISIBLE
+        btnCancelar.isEnabled = true
+        btnAbrir.visibility = View.GONE
+        progreso.progress = 0
+        txtPorcentaje.text = "0%"
+        txtTamano.text = ""
+        txtVelocidad.text = ""
+        txtEstado.text = "Preparando descarga…"
+        DescargaServicio.iniciar(this)
+
+        val base = getExternalFilesDir(Environment.DIRECTORY_MOVIES) ?: filesDir
+        val carpeta = File(base, "tmp_" + System.currentTimeMillis()).apply { mkdirs() }
+        val ctx = applicationContext
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                Red.conReintentos(
+                    ctx = ctx,
+                    cancelado = { cancelado },
+                    aviso = { msg -> runOnUiThread { txtEstado.text = msg } },
+                    detener = { try { YoutubeDL.getInstance().destroyProcessById(idProceso) } catch (e: Exception) { } },
+                    accion = {
+                        val req = YoutubeDLRequest(url)
+                        req.addOption("--no-playlist")
+                        req.addOption("--no-mtime")
+                        req.addOption("--windows-filenames")
+                        req.addOption("-o", carpeta.absolutePath + "/%(title).80s.%(ext)s")
+                        for ((clave, valor) in argsFormato(opcion)) {
+                            if (valor == null) req.addOption(clave) else req.addOption(clave, valor)
+                        }
+                        runOnUiThread { txtEstado.text = "Descargando…" }
+                        YoutubeDL.getInstance().execute(req, idProceso) { pct, eta, linea ->
+                            alProgreso(pct, eta, linea)
+                        }
+                    }
+                )
+
+                val archivo = carpeta.listFiles()
+                    ?.filter { it.isFile && it.extension.lowercase() !in EXT_TEMPORALES }
+                    ?.maxByOrNull { it.lastModified() }
+                    ?: throw IllegalStateException("La descarga terminó pero no se encontró el archivo")
+
+                withContext(Dispatchers.Main) { txtEstado.text = "Guardando en la galería…" }
+                val tam = archivo.length()
+                val tipo = Galeria.mime(archivo)
+                val uri = Galeria.guardar(ctx, archivo)
+                carpeta.deleteRecursively()
+
+                withContext(Dispatchers.Main) {
+                    ultimoUri = uri
+                    ultimoTipo = tipo
+                    finalizarUi()
+                    progreso.progress = 1000
+                    txtPorcentaje.text = "100%"
+                    txtTamano.text = fmtBytes(tam)
+                    txtVelocidad.text = ""
+                    txtEstado.text = "✅ Listo. Se guardó en tu galería, carpeta DescargadorPro."
+                    btnAbrir.visibility = View.VISIBLE
+                }
+                DescargaServicio.terminar(ok = true, cancelado = false)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                carpeta.deleteRecursively()
+                withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) { finalizarUi() }
+                DescargaServicio.terminar(ok = false, cancelado = true)
+                throw e
+            } catch (e: Exception) {
+                carpeta.deleteRecursively()
+                val fueCancelado = cancelado
+                withContext(Dispatchers.Main) {
+                    finalizarUi()
+                    progreso.progress = 0
+                    txtPorcentaje.text = ""
+                    txtTamano.text = ""
+                    txtVelocidad.text = ""
+                    txtEstado.text = if (fueCancelado) "Descarga cancelada." else "No se pudo descargar:\n${mensajeAmable(e)}"
+                }
+                DescargaServicio.terminar(ok = false, cancelado = fueCancelado)
+            }
+        }
+    }
+
+    /** Se llama desde el hilo de la descarga cada vez que yt-dlp informa avance. */
+    private fun alProgreso(pct: Float, eta: Long, linea: String) {
+        val p = pct.coerceIn(0f, 100f)
+        val total = reTotal.find(linea)?.let { aBytes(it.groupValues[1], it.groupValues[2]) } ?: 0L
+        val vel = reVel.find(linea)?.let { aBytes(it.groupValues[1], it.groupValues[2]) } ?: 0L
+        val hecho = if (total > 0) (total * (p / 100.0)).toLong() else 0L
+
+        val textoTam = if (total > 0) "${fmtBytes(hecho)} de ${fmtBytes(total)}" else ""
+        val textoVel = buildList {
+            if (vel > 0) add("↓ ${fmtBytes(vel)}/s")
+            if (eta > 0) add("faltan ${fmtDuracion(eta.toInt())}")
+        }.joinToString(" · ")
+
+        DescargaServicio.progreso(p.toInt(), if (textoTam.isNotEmpty()) textoTam else "Descargando…")
+        runOnUiThread {
+            if (!descargando) return@runOnUiThread
+            progreso.progress = (p * 10).toInt()
+            txtPorcentaje.text = "${p.toInt()}%"
+            txtTamano.text = textoTam
+            txtVelocidad.text = textoVel
+            txtEstado.text = "Descargando…"
+        }
+    }
+
+    private fun cancelar() {
+        if (!descargando) return
+        cancelado = true
+        btnCancelar.isEnabled = false
+        txtEstado.text = "Cancelando…"
+        val id = procesoActual
+        lifecycleScope.launch(Dispatchers.IO) {
+            try { if (id != null) YoutubeDL.getInstance().destroyProcessById(id) } catch (e: Exception) { }
+        }
+    }
+
+    private fun finalizarUi() {
+        descargando = false
+        procesoActual = null
+        btnDescargar.isEnabled = true
+        btnAnalizar.isEnabled = true
+        btnCancelar.visibility = View.GONE
+    }
+
+    private fun abrirUltimo() {
+        val uri = ultimoUri ?: return
+        Galeria.abrir(this, uri, ultimoTipo)
+    }
+
+    private fun copiarTitulo() {
+        if (tituloActual.isBlank()) { toast("Primero analiza un enlace"); return }
+        getSystemService(ClipboardManager::class.java)
+            .setPrimaryClip(ClipData.newPlainText("título", tituloActual))
+        toast("Título copiado")
+    }
+
+    // ---------------------------------------------------------------- utilidades
+
+    /** Convierte "12.5" + "MiB" (como lo imprime yt-dlp) a bytes. */
+    private fun aBytes(numero: String, unidad: String): Long {
+        val n = numero.toDoubleOrNull() ?: return 0L
+        val factor = when (unidad) {
+            "KiB" -> 1024.0
+            "MiB" -> 1024.0 * 1024
+            "GiB" -> 1024.0 * 1024 * 1024
+            "KB" -> 1000.0
+            "MB" -> 1_000_000.0
+            "GB" -> 1_000_000_000.0
+            else -> 1.0
+        }
+        return (n * factor).toLong()
+    }
+
+    private fun mensajeAmable(e: Throwable): String {
+        val m = (e.message ?: e.javaClass.simpleName).trim()
+        val bajo = m.lowercase()
+        return when {
+            "unsupported url" in bajo -> "Este enlace no es compatible o no contiene un video."
+            "private video" in bajo || "login required" in bajo || "sign in" in bajo ->
+                "El video es privado o exige iniciar sesión."
+            "video unavailable" in bajo || "not available" in bajo ->
+                "El video no está disponible (borrado o bloqueado en tu país)."
+            "http error 403" in bajo -> "El sitio rechazó la descarga (403). Reintenta en unos minutos."
+            "http error 429" in bajo -> "Demasiadas solicitudes (429). Espera un momento y reintenta."
+            "no space left" in bajo -> "No hay espacio suficiente en el teléfono."
+            else -> m.lines().lastOrNull { it.isNotBlank() }?.take(300) ?: m.take(300)
+        }
+    }
+
+    /** Toca fuera del campo del enlace -> se esconde el teclado. */
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.action == MotionEvent.ACTION_DOWN) {
+            val v = currentFocus
+            if (v is EditText) {
+                val r = Rect()
+                v.getGlobalVisibleRect(r)
+                if (!r.contains(ev.rawX.toInt(), ev.rawY.toInt())) {
+                    v.clearFocus()
+                    ocultarTeclado()
+                }
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private fun ocultarTeclado() {
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(inputUrl.windowToken, 0)
+    }
+
+    private fun fondo(color: String, borde: String, radioDp: Int, grosorDp: Int = 1) = GradientDrawable().apply {
+        shape = GradientDrawable.RECTANGLE
+        cornerRadius = dp(radioDp).toFloat()
+        setColor(Color.parseColor(color))
+        setStroke(dp(grosorDp), Color.parseColor(borde))
+    }
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+
+    private fun fmtBytes(b: Long): String = when {
+        b >= 1_000_000_000L -> String.format(Locale.getDefault(), "%.2f GB", b / 1e9)
+        b >= 1_000_000L -> String.format(Locale.getDefault(), "%.1f MB", b / 1e6)
+        else -> String.format(Locale.getDefault(), "%.0f KB", b / 1e3)
+    }
+
+    private fun fmtDuracion(seg: Int): String {
+        val h = seg / 3600
+        val m = (seg % 3600) / 60
+        val s = seg % 60
+        return if (h > 0) String.format(Locale.US, "%d:%02d:%02d", h, m, s)
+        else String.format(Locale.US, "%d:%02d", m, s)
+    }
+
+    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+
+    private companion object {
+        val EXT_TEMPORALES = setOf("part", "ytdl", "temp", "tmp", "json", "txt")
+    }
+}
+// FIN-ARCHIVO
